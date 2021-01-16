@@ -1,11 +1,8 @@
 import numpy as np
-from Vector2 import Vector2
-import numpy as np
 import matplotlib.pyplot as plt
 from math import cos, sin, tan, pi
+from scipy.integrate import solve_ivp
 
-
-'''
 class ParafoilProperties:
     def init(self):
         self.Cl = None
@@ -14,19 +11,19 @@ class ParafoilProperties:
         self.CM_YAW = None
         self.CM_ROLL = None
 
-    def set_properties(self, alpha):
-'''
+    #def set_properties(self, alpha):
+
 
 class Quaternion():
-    def __init__(self):
+    def __init__(self, omega=np.array([0,0,0])):
         self.quaternion = np.array([0,0,0,0])
-        self.delta_q = None        #derivative of quaternion
         self.dt = 0.1 #time interval of integration
         self.phi = 0
         self.theta = 0
         self.psi = 0 
+        self.omega = omega
 
-    def _f_attitude_dot(t, attitude, omega):
+    def _f_attitude_dot(self, time):
         """
         Right hand side of quaternion attitude differential equation.
 
@@ -35,13 +32,13 @@ class Quaternion():
         :param omega: ([float]) angular velocity
         :return: ([float]) right hand side of quaternion attitude differential equation.
         """
-        p, q, r = omega
+        p, q, r = self.omega
         T = np.array([[0, -p, -q, -r],
                         [p, 0, r, -q],
                         [q, -r, 0, p],
                         [r, q, -p, 0]
                         ])
-        self.delta_q = 0.5 * np.dot(T, attitude)
+        return 0.5 * np.dot(T, self.quaternion)
 
     def _to_quaternion(self, euler):
         """
@@ -63,7 +60,7 @@ class Quaternion():
 
     #def _to_euler(self, attitude):
 
-    def _rot_b_v(self, attitude):
+    def _rot_b_v(self):
         """
         Rotate vector from body frame to vehicle frame.
 
@@ -79,89 +76,77 @@ class Quaternion():
                  np.cos(phi) * np.sin(th) * np.sin(psi) - np.sin(phi) * np.cos(psi), np.cos(phi) * np.cos(th)]
             ])"""
 
-        if len(attitude) == 4:
-            e0, e1, e2, e3 = attitude
+        if self.quaternion:
+            e0, e1, e2, e3 = self.quaternion
             return np.array([[-1 + 2 * (e0 ** 2 + e1 ** 2), 2 * (e1 * e2 + e3 * e0), 2 * (e1 * e3 - e2 * e0)],
                              [2 * (e1 * e2 - e3 * e0), -1 + 2 * (e0 ** 2 + e2 ** 2), 2 * (e2 * e3 + e1 * e0)],
                              [2 * (e1 * e3 + e2 * e0), 2 * (e2 * e3 - e1 * e0), -1 + 2 * (e0 ** 2 + e3 ** 2)]])
 
         else:
             raise ValueError("Attitude is not Quaternion")    
+    
+    def _lol(self, t, y):
+        self.quaternion = y
+        return np.concatenate([self._f_attitude_dot(t)])
 
-    def update_quaternion(self):
-        y0 = self.quaternion
-        ivp_vars = np.concatenate([self.delta_q])
-        self.quaternion = solve_ivp(fun=lambda t, y: ivp_vars, t_span=(0, self.delta_t), y0=y0)
+    def _update_quaternion(self):
+        self.quaternion = solve_ivp(fun=lambda t, y: self._lol(t, y), t_span=(0, self.dt), y0=self.quaternion)
 
 
 class Dynamics:
-    def __init__(self):
+    def __init__(self, dt=0.1, I=np.array([[1,0,0],[0,1,0],[0,0,1]]), mass=1):
         #properties, I is inertia matrix, mass in Newton
-        self.I = np.array([[10,1,3], [0,10,0], [0,0,10]])
-        self.mass = 10
+        self.I = I
+        self.mass = mass
         #translational
-        self.position = np.array([0,0,0])
-        self.velocity = np.array([0,0,0])
-        self.acceleration = np.array([0,0,0])
+        self.pos = np.array([0,0,20]) #reference system
+        self.vel = np.array([0,0,0]) #body system
+        self.acc = np.array([0,0,0]) #body system
         #attitude, radians
         self.angular_velocity = np.array([[0,0,0]])
         self.angular_acceleration = np.array([[0,0,0]])
         #position, attitude log
         self.log = []
-        self.dt = 0.1
-        #forces, moments, 3x1 matrices
+        self.dt = dt
         self.time = 0
-        self.forces = np.array([0,1,0])
+        #forces, moments, 3x1 matrices
+        self.forces = np.array([0,0,-self.mass*9.81])
         self.moments = np.array([0,0,0])
 
-    def update
-
-    def update_spacecraft(self):
-        self.rotation_matrix = np.linalg.multi_dot(self.roll, self.pitch, self.yaw)
-
-    def update_dynamics(self, forces, moments):
-        #define forces, moments
-        self.forces = forces
-        self.moments = moments
-        #angular acceleration
-        #inverse_I = np.linalg.inv(self.I)
-        #self.angular_acceleration = np.dot(inverse_I, moments - np.cross(self.angular_velocity, np.dot(self.I, self.angular_velocity)))
+    def update_dynamics(self, rot_bv):
         #translational acceleration
-        self.acceleration = self.forces * 1/self.mass
-
-    def update_kinetics(self, dt):
-        self.dt = dt
+        self.acc = self.forces * 1/self.mass
+        self.vel = self.vel.__add__(self.acc * self.dt)
+        vel_reference = rot_bv * self.vel
         #translation
-        self.position = self.position + self.velocity * self.dt + self.acceleration * 0.5 * (self.dt)**2
-        self.velocity = self.velocity.__add__(self.acceleration * self.dt)
-        self.time += self.dt
+        self.pos = self.pos + vel_reference*self.dt
         #attitude
-        self.attitude = np.add(self.attitude, np.dot(self.dt, self.angular_velocity, np.dot(self.angular_acceleration, 0.5 * (self.dt)**2)))
         self.angular_velocity = np.add(self.angular_velocity, np.dot(self.dt, self.angular_acceleration))
 
-    def update_log(self):
+    def _next_time_step(self):
         self.log.append(self.forces[1])
+        self.time += self.dt
         #self.log.append([self.position, self.velocity, self.acceleration, self.time])
         
     def reset(self):
         self.log = None
-    
+        self.time = 0
 
-my_parafoil = Body()
-my_parafoil.mass = 10
-my_parafoil.I = np.array([[10,1,3], [0,10,0], [0,0,10]])
-o = 1
-of = 1
-oof = 3
-#my_parafoil.update_dynamics(forces=np.array([0, 0, -my_parafoil.mass*9.81]), moments=np.array([10,0,0]))
+parafoil = ParafoilProperties()
+parafoil_dynamics = Dynamics()
+parafoil_attitude = Quaternion()
 
+t = 0.1
+unit_vector = np.array([1,0,0])
+omega_sim = np.array([0,0,pi/20])
 
-while o < oof:
-    my_parafoil.update_rotation_matrix(3.1415/2)
-    my_parafoil.update_log()
-    my_parafoil.update_kinetics(0.1)
-    o += of
+while t < 0.2:
+    parafoil_attitude.omega = omega_sim
+    parafoil_attitude._update_quaternion()
+    print(parafoil_attitude.quaternion)
+    #unitvector = np.dot(parafoil_attitude.quaternion, unit_vector)
+    t+= 0.1
 
-plt.plot(my_parafoil.log)
-plt.ylabel('some numbers')
-plt.show()
+"""
+while parafoil_dynamics.pos[3] > 0:
+    parafoil_dynamics.forces = np.array([0,0,0])"""
