@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from math import cos, sin, tan, pi
 from scipy.integrate import solve_ivp
 
-class ParafoilProperties:
+class ParafoilProperties():
     def init(self):
         self.Cl = None
         self.Cd = None
@@ -23,7 +23,7 @@ class Quaternion():
         self.psi = 0 
         self.omega = omega
 
-    def _f_attitude_dot(self, time):
+    def _f_attitude_dot(self, t, y):
         """
         Right hand side of quaternion attitude differential equation.
 
@@ -84,14 +84,13 @@ class Quaternion():
 
         else:
             raise ValueError("Attitude is not Quaternion")    
+
+    def _my_y(self, t, y):
+        return np.concatenate([_f_attitude_dot(t, self.quaternion)])
     
-    def _lol(self, t, y):
-        self.quaternion = y
-        return np.concatenate([self._f_attitude_dot(t)])
-
     def _update_quaternion(self):
-        self.quaternion = solve_ivp(fun=lambda t, y: self._lol(t, y), t_span=(0, self.dt), y0=self.quaternion)
-
+        my_solution = solve_ivp(fun=_my_y(t,y), t_span=(0, self.dt), y0=self.quaternion)
+        self.quaternion = my_solution.y[0]
 
 class Dynamics:
     def __init__(self, dt=0.1, I=np.array([[1,0,0],[0,1,0],[0,0,1]]), mass=1):
