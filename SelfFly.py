@@ -15,30 +15,13 @@ class ParafoilProperties():
 
 
 class Quaternion():
-    def __init__(self, omega=np.array([0,0,0])):
-        self.quaternion = np.array([0,0,0,0])
-        self.dt = 0.1 #time interval of integration
+    def __init__(self, omega=np.array([0,0,pi/20])):
+        self.quaternion = np.array([1,0,0,0])
+        self.dt = 0.05 #time interval of integration
         self.phi = 0
         self.theta = 0
         self.psi = 0 
         self.omega = omega
-
-    def _f_attitude_dot(self, t, omega_s):
-        """
-        Right hand side of quaternion attitude differential equation.
-
-        :param t: (float) time of integration
-        :param attitude: ([float]) attitude quaternion
-        :param omega: ([float]) angular velocity
-        :return: ([float]) right hand side of quaternion attitude differential equation.
-        """
-        p, q, r = self.omega
-        T = np.array([[0, -p, -q, -r],
-                        [p, 0, r, -q],
-                        [q, -r, 0, p],
-                        [r, q, -p, 0]
-                        ])
-        return 0.5 * np.dot(T, omega_s)
 
     def _to_quaternion(self, euler):
         """
@@ -60,7 +43,7 @@ class Quaternion():
 
     #def _to_euler(self, attitude):
 
-    def _rot_b_v(self):
+    def _rot_b_v(self, vector):
         """
         Rotate vector from body frame to vehicle frame.
 
@@ -76,18 +59,35 @@ class Quaternion():
                  np.cos(phi) * np.sin(th) * np.sin(psi) - np.sin(phi) * np.cos(psi), np.cos(phi) * np.cos(th)]
             ])"""
 
-        if self.quaternion:
-            e0, e1, e2, e3 = self.quaternion
-            return np.array([[-1 + 2 * (e0 ** 2 + e1 ** 2), 2 * (e1 * e2 + e3 * e0), 2 * (e1 * e3 - e2 * e0)],
-                             [2 * (e1 * e2 - e3 * e0), -1 + 2 * (e0 ** 2 + e2 ** 2), 2 * (e2 * e3 + e1 * e0)],
-                             [2 * (e1 * e3 + e2 * e0), 2 * (e2 * e3 - e1 * e0), -1 + 2 * (e0 ** 2 + e3 ** 2)]])
+        
+        e0, e1, e2, e3 = self.quaternion
+        transfer = np.array([[-1 + 2 * (e0 ** 2 + e1 ** 2), 2 * (e1 * e2 + e3 * e0), 2 * (e1 * e3 - e2 * e0)],
+                            [2 * (e1 * e2 - e3 * e0), -1 + 2 * (e0 ** 2 + e2 ** 2), 2 * (e2 * e3 + e1 * e0)],
+                            [2 * (e1 * e3 + e2 * e0), 2 * (e2 * e3 - e1 * e0), -1 + 2 * (e0 ** 2 + e3 ** 2)]])
+        return np.dot(transfer, vector) 
 
-        else:
-            raise ValueError("Attitude is not Quaternion")    
-    
     def _update_quaternion(self):
-        my_solution = solve_ivp(fun=lambda t, y: _f_attitude_dot(t,y), t_span=(0, self.dt), y0=self.quaternion)
-        self.quaternion = my_solution.y[0]
+        def _f_attitude_dot(t, y):
+            """
+            Right hand side of quaternion attitude differential equation.
+
+            :param t: (float) time of integration
+            :param attitude: ([float]) attitude quaternion
+            :param omega: ([float]) angular velocity
+            :return: ([float]) right hand side of quaternion attitude differential equation.
+            """
+            p, q, r = self.omega
+            T = np.array([[0, -p, -q, -r],
+                            [p, 0, r, -q],
+                            [q, -r, 0, p],
+                            [r, q, -p, 0]
+                            ])
+            return np.concatenate([0.5 * np.dot(T, y)])
+        #print(_f_attitude_dot(0,self.quaternion))
+
+        my_solution = solve_ivp(fun=_f_attitude_dot, t_span=(0, self.dt), y0=self.quaternion)
+        self.quaternion = my_solution.y[:, -1]
+        #print(self.quaternion)
 
 class Dynamics:
     def __init__(self, dt=0.1, I=np.array([[1,0,0],[0,1,0],[0,0,1]]), mass=1):
@@ -132,16 +132,25 @@ parafoil = ParafoilProperties()
 parafoil_dynamics = Dynamics()
 parafoil_attitude = Quaternion()
 
-t = 0.1
+ts = 0.1
 unit_vector = np.array([1,0,0])
+mlist = []
+klist = []
 omega_sim = np.array([0,0,pi/20])
 
-while t < 0.2:
-    parafoil_attitude.omega = omega_sim
+while ts < 20:
+    #parafoil_attitude.omega = omega_sim
     parafoil_attitude._update_quaternion()
-    print(parafoil_attitude.quaternion)
+    unit_vector = parafoil_attitude._rot_b_v(unit_vector)
+    #print(parafoil_attitude.quaternion)
+    mlist.append(unit_vector[0])
+    klist.append(unit_vector[1])
     #unitvector = np.dot(parafoil_attitude.quaternion, unit_vector)
-    t+= 0.1
+    ts+= 0.05
+
+plt.plot(mlist)
+plt.plot(klist)
+plt.show()
 
 """
 while parafoil_dynamics.pos[3] > 0:
