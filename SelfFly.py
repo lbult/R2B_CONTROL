@@ -23,7 +23,7 @@ class Quaternion():
         self.psi = 0 
         self.omega = omega
 
-    def _f_attitude_dot(self, t, y):
+    def _f_attitude_dot(self, t, omega_s):
         """
         Right hand side of quaternion attitude differential equation.
 
@@ -38,7 +38,7 @@ class Quaternion():
                         [q, -r, 0, p],
                         [r, q, -p, 0]
                         ])
-        return 0.5 * np.dot(T, self.quaternion)
+        return 0.5 * np.dot(T, omega_s)
 
     def _to_quaternion(self, euler):
         """
@@ -84,12 +84,9 @@ class Quaternion():
 
         else:
             raise ValueError("Attitude is not Quaternion")    
-
-    def _my_y(self, t, y):
-        return np.concatenate([_f_attitude_dot(t, self.quaternion)])
     
     def _update_quaternion(self):
-        my_solution = solve_ivp(fun=_my_y(t,y), t_span=(0, self.dt), y0=self.quaternion)
+        my_solution = solve_ivp(fun=lambda t, y: _f_attitude_dot(t,y), t_span=(0, self.dt), y0=self.quaternion)
         self.quaternion = my_solution.y[0]
 
 class Dynamics:
