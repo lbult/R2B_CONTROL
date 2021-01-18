@@ -13,7 +13,6 @@ class ParafoilProperties():
 
     #def set_properties(self, alpha):
 
-
 class Quaternion():
     def __init__(self, omega=np.array([0,0,pi/20])):
         self.quaternion = np.array([1,0,0,0])
@@ -138,7 +137,7 @@ mlist = []
 klist = []
 omega_sim = np.array([0,0,pi/20])
 
-while ts < 20:
+while ts < 1:
     #parafoil_attitude.omega = omega_sim
     parafoil_attitude._update_quaternion()
     unit_vector = parafoil_attitude._rot_b_v(unit_vector)
@@ -148,9 +147,12 @@ while ts < 20:
     #unitvector = np.dot(parafoil_attitude.quaternion, unit_vector)
     ts+= 0.05
 
-plt.plot(mlist)
-plt.plot(klist)
-plt.show()
+print(mlist)
+print(klist)
+
+#plt.plot(mlist)
+#plt.plot(klist)
+#plt.show()
 
 """
 while parafoil_dynamics.pos[3] > 0:
