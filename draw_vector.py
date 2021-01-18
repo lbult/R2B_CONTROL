@@ -39,16 +39,13 @@ ax.set_ylabel('y')
 ax.set_zlabel('z')
 ax.set_xlim(0,2)
 
-arrow_one, = Arrow3D(mutation_scale=20,
-            arrowstyle="-|>",
-            linestyle='dashed')
-arrow_two, = Arrow3D(mutation_scale=20,
-            arrowstyle="-|>",
-            linestyle='dashed')
-
 def init():
-    arrow_one.dx = 0
-    arrow_one.x =0
+    arrow_one = Arrow3D(0, 0, 0, 0, 0, 0, mutation_scale=20,
+            arrowstyle="-|>",
+            linestyle='dashed')
+    arrow_two = Arrow3D(0, 0, 0, 0, 0, 0, mutation_scale=20,
+            arrowstyle="-|>",
+            linestyle='dashed')
     ax.add_artist(arrow_one)
     ax.add_artist(arrow_two)
 
@@ -65,6 +62,7 @@ def animate(i):
             linestyle='dashed')
     ax.add_artist(arrow_one)
     ax.add_artist(arrow_two)
+    plt.plot()
 
 
 fig.tight_layout()
