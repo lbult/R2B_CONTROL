@@ -1,20 +1,54 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from math import cos, sin, tan, pi
+from math import cos, sin, tan, pi, tanh
 from scipy.integrate import solve_ivp
 
-class ParafoilProperties():
-    def init(self):
-        self.Cl = None
-        self.Cd = None
-        self.CM_PITCH = None
-        self.CM_YAW = None
-        self.CM_ROLL = None
+density = 1.225 #kg/m^3
 
-    #def set_properties(self, alpha):
+class ParafoilProperties():
+    def __init__(self, AR=2.5, alpha_0=0, a_0=2*pi, tau=0.25, epsilon=5*pi/180, surface=5, Cd0=0.01, delta=0.02):
+        #parameters set for thin airfoil theory (see DARE-PRG_R2B Report and Anderson)
+        self.Parafoil_Forces = np.array([0,0,0])
+        self.Parafoil_Moments = np.array([0,0,0])
+        self.AR = AR
+        self.alpha_0 = alpha_0 #radians
+        self.a_0 = a_0*2*pi*AR*tanh(a_0/(2*pi*AR))/a_0 #reduction for LOW AR wing
+        self.tau = tau #function of Fourier coefficients A_n
+        self.a = a_0/(1+(1+tau)*(a_0/(pi*AR)))
+        self.anhedral = epsilon
+        self.surface = surface
+        self.Cd_0 = Cd0 #find for airfoil shape
+        self.delta = delta #estimate using 5.20 in Anderson, function of taper ratio
+        self.Cl = 0
+    
+    def _Calc_Lift(self, alpha, velocity):
+        #alpha in radians
+        k1 = (3.33-1.33*self.AR) #for 1 < alpha < 2.5
+        delta_cl = k1*(sin(alpha-self.alpha_0)**2)*cos(alpha-self.alpha_0)
+        self.Cl = self.a * (alpha-self.alpha_0) * cos(self.anhedral)**2 + delta_cl
+        #calculate total force
+        return 0.5 * density * velocity**2 * self.Cl * self.surface
+ 
+    def _Calc_Drag(self, alpha, velocity):
+        #add payload and line drag contribution
+        k1 = (3.33-1.33*self.AR) #for 1 < alpha < 2.5
+        delta_cd = k1*sin(alpha-self.alpha_0)**3
+        Cd = delta_cd + self.Cd_0 + (1+self.delta) * self.Cl**2 / (pi * self.AR)
+        return 0.5 * density * velocity**2 * Cd * self.surface
+    
+    def _Calc_Pitch(self, velocity):
+        Cm = 0
+        return 0.5 * density * velocity**2 * Cm * self.surface
+
+    def _Parafoil_Forces_Moments(self, alpa, vel):
+        L = self._Calc_Lift(alpa, vel)
+        D = self._Calc_Drag(alpa, vel)
+        self.Parafoil_Forces = np.array([-D ,0, -L])
+        Cm_pitch = self._Calc_Pitch(0)
+        self.Parafoil_Moments = np.array([0,Cm_pitch,0])
 
 class Quaternion():
-    def __init__(self, omega=np.array([0,0,pi/20])):
+    def __init__(self, omega=np.array([0,pi/20,0])):
         self.quaternion = np.array([1,0,0,0])
         self.dt = 0.05 #time interval of integration
         self.phi = 0
@@ -87,6 +121,10 @@ class Quaternion():
         my_solution = solve_ivp(fun=_f_attitude_dot, t_span=(0, self.dt), y0=self.quaternion)
         self.quaternion = my_solution.y[:, -1]
         #print(self.quaternion)
+'''
+For now, add yaw as an angular rate
+'''
+
 
 class Dynamics:
     def __init__(self, dt=0.1, I=np.array([[1,0,0],[0,1,0],[0,0,1]]), mass=1):
@@ -112,7 +150,7 @@ class Dynamics:
         #translational acceleration
         self.acc = self.forces * 1/self.mass
         self.vel = self.vel.__add__(self.acc * self.dt)
-        vel_reference = rot_bv * self.vel
+        vel_reference = rot_bv * self.vel * np.array([]) #switch from right hand to attitude positive upwards
         #translation
         self.pos = self.pos + vel_reference*self.dt
         #attitude
@@ -128,16 +166,22 @@ class Dynamics:
         self.time = 0
 
 parafoil = ParafoilProperties()
+parafoil._Parafoil_Forces_Moments(1/180*pi, 10)
+print(parafoil.Parafoil_Forces)
 parafoil_dynamics = Dynamics()
 parafoil_attitude = Quaternion()
 
 ts = 0.1
-unit_vector = np.array([1,0,0])
+unit_vector = np.array([1,1,1])
 mlist = []
 klist = []
 omega_sim = np.array([0,0,pi/20])
 
 while ts < 1:
+    #update parafoil forces and moments
+    parafoil._Parafoil_Forces_Moments(1/180*pi, 10)
+    # input them into Dynamics
+    parafoil_dynamics.forces = parafoil #+add inverse rotation of gravitational vector
     #parafoil_attitude.omega = omega_sim
     parafoil_attitude._update_quaternion()
     unit_vector = parafoil_attitude._rot_b_v(unit_vector)
@@ -147,8 +191,8 @@ while ts < 1:
     #unitvector = np.dot(parafoil_attitude.quaternion, unit_vector)
     ts+= 0.05
 
-print(mlist)
-print(klist)
+#print(mlist)
+#print(klist)
 
 #plt.plot(mlist)
 #plt.plot(klist)
