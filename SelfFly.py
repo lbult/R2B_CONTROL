@@ -2,6 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from math import cos, sin, tan, pi, tanh
 from scipy.integrate import solve_ivp
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits import mplot3d
 
 density = 1.225 #kg/m^3
 
@@ -48,7 +51,7 @@ class ParafoilProperties():
         self.Parafoil_Moments = np.array([0,Cm_pitch,0])
 
 class Quaternion():
-    def __init__(self, omega=np.array([0,pi/20,0])):
+    def __init__(self, omega=np.array([0,0,pi])):
         self.quaternion = np.array([1,0,0,0])
         self.dt = 0.05 #time interval of integration
         self.phi = 0
@@ -76,7 +79,7 @@ class Quaternion():
 
     #def _to_euler(self, attitude):
 
-    def _rot_b_v(self, vector):
+    def _rot_b_v(self):
         """
         Rotate vector from body frame to vehicle frame.
 
@@ -97,7 +100,7 @@ class Quaternion():
         transfer = np.array([[-1 + 2 * (e0 ** 2 + e1 ** 2), 2 * (e1 * e2 + e3 * e0), 2 * (e1 * e3 - e2 * e0)],
                             [2 * (e1 * e2 - e3 * e0), -1 + 2 * (e0 ** 2 + e2 ** 2), 2 * (e2 * e3 + e1 * e0)],
                             [2 * (e1 * e3 + e2 * e0), 2 * (e2 * e3 - e1 * e0), -1 + 2 * (e0 ** 2 + e3 ** 2)]])
-        return np.dot(transfer, vector) 
+        return transfer
 
     def _update_quaternion(self):
         def _f_attitude_dot(t, y):
@@ -127,12 +130,12 @@ For now, add yaw as an angular rate
 
 
 class Dynamics:
-    def __init__(self, dt=0.1, I=np.array([[1,0,0],[0,1,0],[0,0,1]]), mass=1):
+    def __init__(self, dt=0.1, I=np.array([[1,0,0],[0,1,0],[0,0,1]]), mass=10):
         #properties, I is inertia matrix, mass in Newton
         self.I = I
         self.mass = mass
         #translational
-        self.pos = np.array([0,0,20]) #reference system
+        self.pos = np.array([0, 0, 50]) #reference system
         self.vel = np.array([0,0,0]) #body system
         self.acc = np.array([0,0,0]) #body system
         #attitude, radians
@@ -140,17 +143,21 @@ class Dynamics:
         self.angular_acceleration = np.array([[0,0,0]])
         #position, attitude log
         self.log = []
+        self.pos_log = np.array([[0, 0, 0]])
         self.dt = dt
         self.time = 0
         #forces, moments, 3x1 matrices
         self.forces = np.array([0,0,-self.mass*9.81])
         self.moments = np.array([0,0,0])
+        self.vel_mag = 0
 
     def update_dynamics(self, rot_bv):
+        self.forces = self.forces + np.array([0,0,self.mass*9.81])
         #translational acceleration
         self.acc = self.forces * 1/self.mass
         self.vel = self.vel.__add__(self.acc * self.dt)
-        vel_reference = rot_bv * self.vel * np.array([]) #switch from right hand to attitude positive upwards
+        self.vel_mag = np.sqrt(self.vel.dot(self.vel))
+        vel_reference = np.dot(np.dot(rot_bv, self.vel), np.array([0,0,-1])) #switch from right hand to attitude positive upwards
         #translation
         self.pos = self.pos + vel_reference*self.dt
         #attitude
@@ -159,40 +166,59 @@ class Dynamics:
     def _next_time_step(self):
         self.log.append(self.forces[1])
         self.time += self.dt
+        self.pos_log = np.append(self.pos_log, [self.pos], axis=0)
         #self.log.append([self.position, self.velocity, self.acceleration, self.time])
         
     def reset(self):
         self.log = None
         self.time = 0
 
+ts = 0.1
 parafoil = ParafoilProperties()
-parafoil._Parafoil_Forces_Moments(1/180*pi, 10)
-print(parafoil.Parafoil_Forces)
-parafoil_dynamics = Dynamics()
+#print(parafoil.Parafoil_Forces)
+parafoil_dynamics = Dynamics(dt=ts)
 parafoil_attitude = Quaternion()
 
-ts = 0.1
 unit_vector = np.array([1,1,1])
 mlist = []
 klist = []
+llist = []
 omega_sim = np.array([0,0,pi/20])
+print(parafoil_dynamics.pos[2])
 
-while ts < 1:
+while ts < 6.5:
     #update parafoil forces and moments
-    parafoil._Parafoil_Forces_Moments(1/180*pi, 10)
+    parafoil._Parafoil_Forces_Moments(1/180*pi, parafoil_dynamics.vel_mag)
     # input them into Dynamics
-    parafoil_dynamics.forces = parafoil #+add inverse rotation of gravitational vector
+    parafoil_dynamics.forces = parafoil.Parafoil_Forces #+add inverse rotation of gravitational vector
     #parafoil_attitude.omega = omega_sim
     parafoil_attitude._update_quaternion()
-    unit_vector = parafoil_attitude._rot_b_v(unit_vector)
-    #print(parafoil_attitude.quaternion)
-    mlist.append(unit_vector[0])
-    klist.append(unit_vector[1])
-    #unitvector = np.dot(parafoil_attitude.quaternion, unit_vector)
-    ts+= 0.05
+    #unit_vector = parafoil_attitude._rot_b_v()
+    parafoil_dynamics.update_dynamics(parafoil_attitude._rot_b_v())
+    parafoil_dynamics._next_time_step()
+    ts+= 0.1
 
-#print(mlist)
-#print(klist)
+print(parafoil_dynamics.pos_log)
+
+num_rows, num_cols = parafoil_dynamics.pos_log.shape
+i=0
+while i < num_rows-2:
+    mlist.append(parafoil_dynamics.pos_log[i,0])
+    klist.append(parafoil_dynamics.pos_log[i,1])
+    llist.append(parafoil_dynamics.pos_log[i,2])
+    i+=1
+
+print(mlist)
+
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.scatter3D(mlist, klist, llist, c=llist, cmap='Greens');
+plt.savefig("First")
+plt.show()
+
+plt.plot(mlist, klist)
+plt.show()
+
 
 #plt.plot(mlist)
 #plt.plot(klist)
