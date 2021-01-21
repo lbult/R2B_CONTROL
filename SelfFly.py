@@ -51,7 +51,7 @@ class ParafoilProperties():
         self.Parafoil_Moments = np.array([0,Cm_pitch,0])
 
 class Quaternion():
-    def __init__(self, omega=np.array([0,0,pi])):
+    def __init__(self, omega=np.array([0,0,pi/5])):
         self.quaternion = np.array([1,0,0,0])
         self.dt = 0.05 #time interval of integration
         self.phi = 0
@@ -136,7 +136,7 @@ class Dynamics:
         self.mass = mass
         #translational
         self.pos = np.array([0, 0, 50]) #reference system
-        self.vel = np.array([0,0,0]) #body system
+        self.vel = np.array([1,0,0]) #body system
         self.acc = np.array([0,0,0]) #body system
         #attitude, radians
         self.angular_velocity = np.array([[0,0,0]])
@@ -152,12 +152,15 @@ class Dynamics:
         self.vel_mag = 0
 
     def update_dynamics(self, rot_bv):
-        self.forces = self.forces + np.array([0,0,self.mass*9.81])
+        self.forces = np.dot(rot_bv, self.forces) + np.array([0,0,self.mass*9.81])
+        
         #translational acceleration
         self.acc = self.forces * 1/self.mass
-        self.vel = self.vel.__add__(self.acc * self.dt)
+        print(self.acc)
+        self.vel = self.vel + self.acc * self.dt
+        print(self.vel)
         self.vel_mag = np.sqrt(self.vel.dot(self.vel))
-        vel_reference = np.dot(np.dot(rot_bv, self.vel), np.array([0,0,-1])) #switch from right hand to attitude positive upwards
+        vel_reference = self.vel *  np.array([1,1,-1]) #switch from right hand to attitude positive upwards
         #translation
         self.pos = self.pos + vel_reference*self.dt
         #attitude
@@ -178,13 +181,9 @@ parafoil = ParafoilProperties()
 #print(parafoil.Parafoil_Forces)
 parafoil_dynamics = Dynamics(dt=ts)
 parafoil_attitude = Quaternion()
-
-unit_vector = np.array([1,1,1])
 mlist = []
 klist = []
 llist = []
-omega_sim = np.array([0,0,pi/20])
-print(parafoil_dynamics.pos[2])
 
 while ts < 6.5:
     #update parafoil forces and moments
@@ -213,10 +212,18 @@ print(mlist)
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 ax.scatter3D(mlist, klist, llist, c=llist, cmap='Greens');
-plt.savefig("First")
+#plt.savefig("First")
 plt.show()
 
-plt.plot(mlist, klist)
+fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
+fig.suptitle('Sharing x per column, y per row')
+ax1.plot(mlist, klist)
+ax2.plot(mlist, klist, 'tab:orange')
+ax3.plot(mlist, llist, 'tab:green')
+ax4.plot(mlist, llist, 'tab:red')
+
+for ax in fig.get_axes():
+    ax.label_outer()
 plt.show()
 
 
