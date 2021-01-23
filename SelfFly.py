@@ -159,6 +159,7 @@ class Dynamics:
         #position, attitude log
         self.log = []
         self.pos_log = np.array([[0, 0, 0]])
+        self.vel_log = np.array([[0, 0, 0]])
         self.dt = dt
         self.time = 0
         #forces, moments, 3x1 matrices
@@ -187,6 +188,7 @@ class Dynamics:
         self.log.append(self.forces[1])
         self.time += self.dt
         self.pos_log = np.append(self.pos_log, [self.pos], axis=0)
+        self.vel_log = np.append(self.vel_log, [self.vel], axis=0)
         #self.log.append([self.position, self.velocity, self.acceleration, self.time])
         
     def reset(self):
@@ -202,17 +204,21 @@ mlist = []
 klist = []
 llist = []
 
+ulist = []
+vlist = []
+wlist = []
+
 parafoil.Left_TE = 5*pi/180
 change_TE  = True
 
 while ts < 6.5:
     #update parafoil forces and moments
     parafoil._Parafoil_Forces_Moments(1/180*pi, parafoil_dynamics.vel_mag)
-    '''if ts >= 3.25 and change_TE:
+    if ts >= 3.25 and change_TE:
         parafoil.Left_TE = 0
         parafoil.Right_TE = 5*pi/180
         change_TE = False
-    '''
+    
     parafoil_attitude.omega = parafoil._Parafoil_Control(parafoil_dynamics.turn_vel)
     # input them into Dynamics
     parafoil_dynamics.forces = parafoil.Parafoil_Forces #+add inverse rotation of gravitational vector
@@ -229,6 +235,9 @@ while i < num_rows-2:
     mlist.append(parafoil_dynamics.pos_log[i,0])
     klist.append(parafoil_dynamics.pos_log[i,1])
     llist.append(parafoil_dynamics.pos_log[i,2])
+    ulist.append(parafoil_dynamics.vel_log[i,0])
+    vlist.append(parafoil_dynamics.vel_log[i,1])
+    wlist.append(parafoil_dynamics.vel_log[i,2])
     i+=1
 
 
@@ -243,11 +252,13 @@ fig.suptitle('Sharing x per column, y per row')
 ax1.plot(mlist, klist)
 
 ax1.set_title("Ground Track")
-ax2.plot(mlist, klist, 'tab:orange')
+ax2.plot(wlist, 'tab:orange')
+ax2.set_title("X speed")
 ax3.plot(mlist, llist, 'tab:green')
 
 ax3.set_title("Vertical")
-ax4.plot(mlist, llist, 'tab:red')
+ax4.set_title("Y Speed")
+ax4.plot(vlist, 'tab:red')
 
 plt.show() 
 
