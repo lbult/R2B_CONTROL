@@ -208,10 +208,11 @@ change_TE  = True
 while ts < 6.5:
     #update parafoil forces and moments
     parafoil._Parafoil_Forces_Moments(1/180*pi, parafoil_dynamics.vel_mag)
-    if ts >= 3.25 and change_TE:
+    '''if ts >= 3.25 and change_TE:
         parafoil.Left_TE = 0
         parafoil.Right_TE = 5*pi/180
         change_TE = False
+    '''
     parafoil_attitude.omega = parafoil._Parafoil_Control(parafoil_dynamics.turn_vel)
     # input them into Dynamics
     parafoil_dynamics.forces = parafoil.Parafoil_Forces #+add inverse rotation of gravitational vector
@@ -230,7 +231,7 @@ while i < num_rows-2:
     llist.append(parafoil_dynamics.pos_log[i,2])
     i+=1
 
-'''
+
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 ax.scatter3D(mlist, klist, llist, c=llist, cmap='Greens');
@@ -248,7 +249,7 @@ ax3.plot(mlist, llist, 'tab:green')
 ax3.set_title("Vertical")
 ax4.plot(mlist, llist, 'tab:red')
 
-plt.show() '''
+plt.show() 
 
 print(klist)
 
