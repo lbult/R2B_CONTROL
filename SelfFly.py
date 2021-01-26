@@ -9,22 +9,33 @@ from mpl_toolkits import mplot3d
 density = 1.225 #kg/m^3
 
 class ParafoilProperties():
-    def __init__(self, AR=2.5, alpha_0=0, a_0=2*pi, tau=0.25, epsilon=5*pi/180, surface=5, Cd0=0.01, delta=0.02):
+    def __init__(self, AR=2.5, alpha_0=0, a_0=2*pi, tau=0.25, epsilon=5*pi/180, surface=5, Cd0=0.01, delta=0.02, rigging=0, m=10):
         #parameters set for thin airfoil theory (see DARE-PRG_R2B Report and Anderson)
         self.Parafoil_Forces = np.array([0,0,0])
         self.Parafoil_Moments = np.array([0,0,0])
+        self.Cl = 0
+        
+        #geometric properties
         self.AR = AR
-        self.alpha_0 = alpha_0 #radians
-        self.a_0 = a_0*2*pi*AR*tanh(a_0/(2*pi*AR))/a_0 #reduction for LOW AR wing
-        self.tau = tau #function of Fourier coefficients A_n
-        self.a = a_0/(1+(1+tau)*(a_0/(pi*AR)))
         self.anhedral = epsilon
         self.surface = surface
+        self.rigging = rigging
+        self.m = m
+        
+        #airfoil properties
+        self.a_0 = a_0*2*pi*AR*tanh(a_0/(2*pi*AR))/a_0 #reduction for LOW AR wing
+        self.alpha_0 = alpha_0 #radians
+        self.tau = tau #function of Fourier coefficients A_n
+        self.a = a_0/(1+(1+tau)*(a_0/(pi*AR)))
         self.Cd_0 = Cd0 #find for airfoil shape
         self.delta = delta #estimate using 5.20 in Anderson, function of taper ratio
-        self.Cl = 0
+        
+        #control properties
         self.Right_TE = 0
         self.Left_TE = 0
+
+    #def alpha_opt(): calculate optimal angle of attack, defining rigging etc based on that
+
     
     def _Calc_Lift(self, alpha, velocity):
         #alpha in radians
@@ -45,9 +56,9 @@ class ParafoilProperties():
         Cm = 0
         return 0.5 * density * velocity**2 * Cm * self.surface
 
-    def _Parafoil_Forces_Moments(self, alpa, vel):
-        L = self._Calc_Lift(alpa, vel)
-        D = self._Calc_Drag(alpa, vel)
+    def _Parafoil_Forces_Moments(self, alpa, vel, gamma):
+        L = self._Calc_Lift(alpa, vel)*cos(gamma) + self._Calc_Drag(alpa, vel)*sin(gamma)
+        D = self._Calc_Drag(alpa, vel)*cos(gamma) - self._Calc_Lift(alpa, vel)*sin(gamma)
         self.Parafoil_Forces = np.array([-D ,0, -L])
         Cm_pitch = self._Calc_Pitch(0)
         self.Parafoil_Moments = np.array([0,Cm_pitch,0])
@@ -61,10 +72,62 @@ class ParafoilProperties():
         elif self.Right_TE != 0 and self.Left_TE == 0:
             return np.array([0,0, -0.71 * turn_velocity * self.Right_TE / span])
         else:
-            return 0
+            return np.array([0,0,0])
 
+class Payload():
+    def __init__(self, M=10, shape="", payload_cd=0):
+        self.M=M
+        self.shape = shape
+        self.payload_cd = payload_cd
 
+class Variable():
+    def __init__(self, var_name=""):
+        self.history = []
+        self.var_name = var_name
+    
+    def update_history(self, value):
+        self.history.append(value)
 
+    def plot(self, subplot_one, subplot_two, x_or_y, ylabel):
+        #input lists of data
+        if subplot_one == None:
+            fig = plt.figure()
+            plt.plot(self.history)
+            plt.show()
+        elif x_or_y == "x":
+            
+            fig = plt.figure()
+            ax1 = fig.add_subplot(111)
+            ax1.plot(self.history, subplot_one)
+            plt.xlabel(self.var_name)
+            plt.ylabel(ylabel)
+            
+            if subplot_two != None:
+                ax2 = fig.add_subplot(112)
+                ax2.plot(self.history, subplot_two)
+            
+            plt.show()
+
+        elif x_or_y == "y":
+            
+            fig = plt.figure()
+            ax1 = fig.add_subplot(111)
+            ax1.plot(subplot_one, self.history)
+            plt.ylabel(self.var_name)
+            plt.xlabel(ylabel)
+
+            if subplot_two != None:
+                ax2 = fig.add_subplot(112)
+                ax2.plot(subplot_two, self.history)
+
+            plt.show()
+
+        else:
+            print("Wrong")
+
+    def plot_3D(self): 
+        #plotting more variables
+        print("Empty")
 
 class Quaternion():
     def __init__(self, omega=np.array([0,0,0])):
@@ -145,21 +208,18 @@ For now, add yaw as an angular rate
 '''
 
 class Dynamics:
-    def __init__(self, dt=0.1, I=np.array([[1,0,0],[0,1,0],[0,0,1]]), mass=10):
+    def __init__(self, dt=0.1, I=np.array([[1,0,0],[0,1,0],[0,0,1]]), mass=10, pos=np.array([0,0,100])):
         #properties, I is inertia matrix, mass in Newton
         self.I = I
         self.mass = mass
         #translational
-        self.pos = np.array([0,0,50]) #reference system
-        self.vel = np.array([1,0,0]) #body system
+        self.pos = pos #reference system
+        self.vel = np.array([20,0,0]) #body system
         self.acc = np.array([0,0,0]) #body system
         #attitude, radians
         self.angular_velocity = np.array([[0,0,0]])
         self.angular_acceleration = np.array([[0,0,0]])
         #position, attitude log
-        self.log = []
-        self.pos_log = np.array([[0, 0, 0]])
-        self.vel_log = np.array([[0, 0, 0]])
         self.dt = dt
         self.time = 0
         #forces, moments, 3x1 matrices
@@ -171,7 +231,7 @@ class Dynamics:
         self.turn_vel = 0
 
     def update_dynamics(self, rot_bv):
-        self.forces = np.dot(rot_bv, self.forces) + np.array([0,0,self.mass*9.81])
+        self.forces = np.dot(rot_bv, self.forces) * np.array([1,1,0]) + self.forces * np.array([0,0,1]) + np.array([0,0,self.mass*9.81])
         #translational acceleration
         self.acc = self.forces * 1/self.mass
         self.vel = self.vel + self.acc * self.dt
@@ -184,84 +244,18 @@ class Dynamics:
         self.gamma = atan( self.vel[2] / sqrt(self.vel[0]**2+self.vel[1]**2))
         self.turn_vel =  self.vel_mag * cos(self.gamma)
 
+        #update time
+        #self.time += self.dt
+
     def _next_time_step(self):
-        self.log.append(self.forces[1])
         self.time += self.dt
-        self.pos_log = np.append(self.pos_log, [self.pos], axis=0)
-        self.vel_log = np.append(self.vel_log, [self.vel], axis=0)
+        
+        #self.log.append(self.forces[1])
+        #self.pos_log = np.append(self.pos_log, [self.pos], axis=0)
+        #self.vel_log = np.append(self.vel_log, [self.vel], axis=0)
         #self.log.append([self.position, self.velocity, self.acceleration, self.time])
         
     def reset(self):
         self.log = None
         self.time = 0
 
-ts = 0.05
-parafoil = ParafoilProperties()
-#print(parafoil.Parafoil_Forces)
-parafoil_dynamics = Dynamics(dt=ts)
-parafoil_attitude = Quaternion()
-mlist = []
-klist = []
-llist = []
-
-ulist = []
-vlist = []
-wlist = []
-
-parafoil.Left_TE = 5*pi/180
-change_TE  = True
-
-while ts < 6.5:
-    #update parafoil forces and moments
-    parafoil._Parafoil_Forces_Moments(1/180*pi, parafoil_dynamics.vel_mag)
-    if ts >= 3.25 and change_TE:
-        parafoil.Left_TE = 0
-        parafoil.Right_TE = 5*pi/180
-        change_TE = False
-    
-    parafoil_attitude.omega = parafoil._Parafoil_Control(parafoil_dynamics.turn_vel)
-    # input them into Dynamics
-    parafoil_dynamics.forces = parafoil.Parafoil_Forces #+add inverse rotation of gravitational vector
-    #parafoil_attitude.omega = omega_sim
-    parafoil_attitude._update_quaternion()
-    #unit_vector = parafoil_attitude._rot_b_v()
-    parafoil_dynamics.update_dynamics(parafoil_attitude._rot_b_v())
-    parafoil_dynamics._next_time_step()
-    ts+= 0.05
-
-num_rows, num_cols = parafoil_dynamics.pos_log.shape
-i=0
-while i < num_rows-2:
-    mlist.append(parafoil_dynamics.pos_log[i,0])
-    klist.append(parafoil_dynamics.pos_log[i,1])
-    llist.append(parafoil_dynamics.pos_log[i,2])
-    ulist.append(parafoil_dynamics.vel_log[i,0])
-    vlist.append(parafoil_dynamics.vel_log[i,1])
-    wlist.append(parafoil_dynamics.vel_log[i,2])
-    i+=1
-
-
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-ax.scatter3D(mlist, klist, llist, c=llist, cmap='Greens');
-#plt.savefig("First")
-plt.show()
-
-fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
-fig.suptitle('Sharing x per column, y per row')
-ax1.plot(mlist, klist)
-
-ax1.set_title("Ground Track")
-ax2.plot(wlist, 'tab:orange')
-ax2.set_title("X speed")
-ax3.plot(mlist, llist, 'tab:green')
-
-ax3.set_title("Vertical")
-ax4.set_title("Y Speed")
-ax4.plot(vlist, 'tab:red')
-
-plt.show() 
-
-print(klist)
-
-mmmm = 1
