@@ -4,7 +4,7 @@ from math import pi
 from matplotlib import pyplot as plt
 from SelfFly import ParafoilProperties, Quaternion, Dynamics, Variable, Payload
 
-ts = 0.05
+ts = 0.025
 #define parafoil-payload system properties
 parafoil = ParafoilProperties(m=635, alpha_0=(-3.5*pi/180), surface=697, a_0=6.41, Cd0=0.005)
 mpayload = Payload(M=9979)
@@ -37,9 +37,9 @@ while start == True or pos_z.history[-1] > 0:
         change_TE = False
     
     #update parafoil forces and moments
-    parafoil._Parafoil_Forces_Moments(3*pi/180, parafoil_dynamics.vel_mag, parafoil_dynamics.gamma)
+    parafoil._Parafoil_Forces_Moments(15*pi/180, parafoil_dynamics.vel_mag, parafoil_dynamics.gamma)
     parafoil_dynamics.forces = parafoil.Parafoil_Forces
-    print(parafoil.Parafoil_Forces)
+    #print(parafoil.Parafoil_Forces)
 
     # input them into Dynamics
     parafoil_attitude.omega = parafoil._Parafoil_Control(parafoil_dynamics.turn_vel)
@@ -61,16 +61,16 @@ while start == True or pos_z.history[-1] > 0:
     force_z.update_history(parafoil.Parafoil_Forces[2])
 
     #update counter
-    ts+= 0.05
+    ts+= 0.025
     start=False
 
-pos_x.plot(pos_y.history, None, "x", pos_y.var_name)
+#pos_x.plot(pos_y.history, None, "x", pos_y.var_name)
 pos_z.plot(pos_x.history, None, "y", pos_x.var_name)
 vel_x.plot(None, None, "y", vel_x.var_name)
-vel_y.plot(None, None, "y", vel_y.var_name)
+#vel_y.plot(None, None, "y", vel_y.var_name)
 vel_z.plot(None, None, "y", vel_z.var_name)
-force_x.plot(None, None, "y", force_x.var_name)
-force_z.plot(None, None, "y", force_z.var_name)
+'''force_x.plot(None, None, "y", force_x.var_name)
+force_z.plot(None, None, "y", force_z.var_name)'''
 
 
 fig = plt.figure()

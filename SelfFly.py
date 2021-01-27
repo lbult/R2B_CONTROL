@@ -50,7 +50,8 @@ class ParafoilProperties():
         k1 = (3.33-1.33*self.AR) #for 1 < alpha < 2.5
         delta_cd = k1*sin(alpha-self.alpha_0)**3
         Cd = delta_cd + self.Cd_0 + (1+self.delta) * self.Cl**2 / (pi * self.AR)
-        return 0.5 * density * velocity**2 * Cd * self.surface + 0.1
+        Cd += 0.15
+        return 0.5 * density * velocity**2 * Cd * self.surface
     
     def _Calc_Pitch(self, velocity):
         Cm = 0
