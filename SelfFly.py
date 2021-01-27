@@ -50,14 +50,14 @@ class ParafoilProperties():
         k1 = (3.33-1.33*self.AR) #for 1 < alpha < 2.5
         delta_cd = k1*sin(alpha-self.alpha_0)**3
         Cd = delta_cd + self.Cd_0 + (1+self.delta) * self.Cl**2 / (pi * self.AR)
-        return 0.5 * density * velocity**2 * Cd * self.surface
+        return 0.5 * density * velocity**2 * Cd * self.surface + 0.1
     
     def _Calc_Pitch(self, velocity):
         Cm = 0
         return 0.5 * density * velocity**2 * Cm * self.surface
 
     def _Parafoil_Forces_Moments(self, alpa, vel, gamma):
-        L = self._Calc_Lift(alpa, vel)*cos(gamma) + self._Calc_Drag(alpa, vel)*sin(gamma)
+        L = abs(self._Calc_Lift(alpa, vel)*cos(gamma)) + self._Calc_Drag(alpa, vel)*sin(gamma)
         D = self._Calc_Drag(alpa, vel)*cos(gamma) - self._Calc_Lift(alpa, vel)*sin(gamma)
         self.Parafoil_Forces = np.array([-D ,0, -L])
         Cm_pitch = self._Calc_Pitch(0)

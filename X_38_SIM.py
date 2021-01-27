@@ -21,6 +21,9 @@ vel_x = Variable("Velocity [x]")
 vel_y = Variable("Velocity [y]")
 vel_z = Variable("Velocity [z]")
 
+force_x = Variable("Drag [x]")
+force_z = Variable("Lift [z]")
+
 parafoil.Left_TE = 0 #5*pi/180
 change_TE  = False
 
@@ -54,6 +57,9 @@ while start == True or pos_z.history[-1] > 0:
     vel_y.update_history(parafoil_dynamics.vel[1])
     vel_z.update_history(parafoil_dynamics.vel[2])
 
+    force_x.update_history(parafoil.Parafoil_Forces[0])
+    force_z.update_history(parafoil.Parafoil_Forces[2])
+
     #update counter
     ts+= 0.05
     start=False
@@ -63,6 +69,8 @@ pos_z.plot(pos_x.history, None, "y", pos_x.var_name)
 vel_x.plot(None, None, "y", vel_x.var_name)
 vel_y.plot(None, None, "y", vel_y.var_name)
 vel_z.plot(None, None, "y", vel_z.var_name)
+force_x.plot(None, None, "y", force_x.var_name)
+force_z.plot(None, None, "y", force_z.var_name)
 
 
 fig = plt.figure()
