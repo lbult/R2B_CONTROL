@@ -58,8 +58,8 @@ class ParafoilProperties():
 
         return
 
-    def _Parafoil_Forces_Moments(self, w, u, vel, gamma):
-        alpa = atan(w/u)
+    def _Parafoil_Forces_Moments(self, w, u, vel, gamma, pitch):
+        alpa = atan(w/u)+pitch #redefine this to wrt airspeed
         L = abs(self._Calc_Lift(alpa, vel)*cos(gamma)) + self._Calc_Drag(alpa, vel)*sin(gamma)
         D = self._Calc_Drag(alpa, vel)*cos(gamma) - self._Calc_Lift(alpa, vel)*sin(gamma)
         self.Parafoil_Forces = np.array([-D ,0, -L])
@@ -203,7 +203,6 @@ class Quaternion():
 
         my_solution = solve_ivp(fun=_f_attitude_dot, t_span=(0, self.dt), y0=self.quaternion)
         self.quaternion = my_solution.y[:, -1]
-        print(self.quaternion)
 '''
 For now, add yaw as an angular rate
 '''
