@@ -54,10 +54,12 @@ class ParafoilProperties():
         return 0.5 * density * velocity**2 * Cd * self.surface
     
     def _Calc_Pitch(self, velocity):
-        Cm = 0
-        return 0.5 * density * velocity**2 * Cm * self.surface
+        #assume airfoil pitch coefficient negligible for now
 
-    def _Parafoil_Forces_Moments(self, alpa, vel, gamma):
+        return
+
+    def _Parafoil_Forces_Moments(self, w, u, vel, gamma):
+        alpa = atan(w/u)
         L = abs(self._Calc_Lift(alpa, vel)*cos(gamma)) + self._Calc_Drag(alpa, vel)*sin(gamma)
         D = self._Calc_Drag(alpa, vel)*cos(gamma) - self._Calc_Lift(alpa, vel)*sin(gamma)
         self.Parafoil_Forces = np.array([-D ,0, -L])
@@ -174,8 +176,6 @@ class Quaternion():
                 [np.cos(phi) * np.sin(th) * np.cos(psi) + np.sin(phi) * np.sin(psi),
                  np.cos(phi) * np.sin(th) * np.sin(psi) - np.sin(phi) * np.cos(psi), np.cos(phi) * np.cos(th)]
             ])"""
-
-        
         e0, e1, e2, e3 = self.quaternion
         transfer = np.array([[-1 + 2 * (e0 ** 2 + e1 ** 2), 2 * (e1 * e2 + e3 * e0), 2 * (e1 * e3 - e2 * e0)],
                             [2 * (e1 * e2 - e3 * e0), -1 + 2 * (e0 ** 2 + e2 ** 2), 2 * (e2 * e3 + e1 * e0)],
@@ -203,7 +203,7 @@ class Quaternion():
 
         my_solution = solve_ivp(fun=_f_attitude_dot, t_span=(0, self.dt), y0=self.quaternion)
         self.quaternion = my_solution.y[:, -1]
-        #print(self.quaternion)
+        print(self.quaternion)
 '''
 For now, add yaw as an angular rate
 '''
@@ -260,3 +260,8 @@ class Dynamics:
         self.log = None
         self.time = 0
 
+"""
+class Wind():
+    def __init__():
+Most important for accurate landing, exclude for now?        
+"""

@@ -24,20 +24,22 @@ vel_z = Variable("Velocity [z]")
 force_x = Variable("Drag [x]")
 force_z = Variable("Lift [z]")
 
-parafoil.Left_TE = 0 #5*pi/180
-change_TE  = False
+parafoil.Left_TE = 5*pi/180
+change_TE  = True
 
 start=True
 
 while start == True or pos_z.history[-1] > 0:
-    
-    if ts >= 3.25 and change_TE:
+    '''
+    if ts >= 70 and change_TE:
         parafoil.Left_TE = 0
         parafoil.Right_TE = 5*pi/180
-        change_TE = False
+        change_TE = False'''
+
+    #print(parafoil.Right_TE)
     
     #update parafoil forces and moments
-    parafoil._Parafoil_Forces_Moments(15*pi/180, parafoil_dynamics.vel_mag, parafoil_dynamics.gamma)
+    parafoil._Parafoil_Forces_Moments(parafoil_dynamics.vel[2], parafoil_dynamics.vel[0], parafoil_dynamics.vel_mag, parafoil_dynamics.gamma)
     parafoil_dynamics.forces = parafoil.Parafoil_Forces
     #print(parafoil.Parafoil_Forces)
 
@@ -64,7 +66,7 @@ while start == True or pos_z.history[-1] > 0:
     ts+= 0.025
     start=False
 
-#pos_x.plot(pos_y.history, None, "x", pos_y.var_name)
+pos_x.plot(pos_y.history, None, "x", pos_y.var_name)
 pos_z.plot(pos_x.history, None, "y", pos_x.var_name)
 vel_x.plot(None, None, "y", vel_x.var_name)
 #vel_y.plot(None, None, "y", vel_y.var_name)
