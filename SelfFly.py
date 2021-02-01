@@ -58,8 +58,8 @@ class ParafoilProperties():
 
         return
 
-    def _Parafoil_Forces_Moments(self, w, u, vel, gamma, pitch):
-        alpa = atan(w/u)+pitch #redefine this to wrt airspeed
+    def _Parafoil_Forces_Moments(self, w, u, vel, gamma): #, pitch):
+        alpa = atan(w/u) #+pitch redefine this to wrt airspeed
         L = abs(self._Calc_Lift(alpa, vel)*cos(gamma)) + self._Calc_Drag(alpa, vel)*sin(gamma)
         D = self._Calc_Drag(alpa, vel)*cos(gamma) - self._Calc_Lift(alpa, vel)*sin(gamma)
         self.Parafoil_Forces = np.array([-D ,0, -L])
@@ -199,7 +199,6 @@ class Quaternion():
                             [r, q, -p, 0]
                             ])
             return np.concatenate([0.5 * np.dot(T, y)])
-        #print(_f_attitude_dot(0,self.quaternion))
 
         my_solution = solve_ivp(fun=_f_attitude_dot, t_span=(0, self.dt), y0=self.quaternion)
         self.quaternion = my_solution.y[:, -1]
@@ -241,19 +240,11 @@ class Dynamics:
         self.pos = self.pos + vel_reference*self.dt + 0.5 * (self.dt**2) * self.acc * np.array([1,1,-1])
         #attitude
         self.angular_velocity = np.add(self.angular_velocity, np.dot(self.dt, self.angular_acceleration))
-        self.gamma = atan( self.vel[2] / sqrt(self.vel[0]**2+self.vel[1]**2))
+        self.gamma = atan(self.vel[2] / sqrt(self.vel[0]**2+self.vel[1]**2))
         self.turn_vel =  self.vel_mag * cos(self.gamma)
-
-        #update time
-        #self.time += self.dt
 
     def _next_time_step(self):
         self.time += self.dt
-        
-        #self.log.append(self.forces[1])
-        #self.pos_log = np.append(self.pos_log, [self.pos], axis=0)
-        #self.vel_log = np.append(self.vel_log, [self.vel], axis=0)
-        #self.log.append([self.position, self.velocity, self.acceleration, self.time])
         
     def reset(self):
         self.log = None
