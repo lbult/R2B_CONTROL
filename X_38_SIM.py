@@ -24,8 +24,8 @@ vel_z = Variable("Velocity [z]")
 force_x = Variable("Drag [x]")
 force_z = Variable("Lift [z]")
 
-parafoil.Left_TE = 5*pi/180
-change_TE  = True
+'''parafoil.Left_TE = 5*pi/180
+change_TE  = True'''
 
 start=True
 
@@ -36,16 +36,19 @@ while start == True or pos_z.history[-1] > 0:
         parafoil.Right_TE = 5*pi/180
         change_TE = False'''
 
-    #print(parafoil.Right_TE)
-    
-    #update parafoil forces and moments
-    parafoil._Parafoil_Forces_Moments(parafoil_dynamics.vel[2], parafoil_dynamics.vel[0], parafoil_dynamics.vel_mag, parafoil_dynamics.gamma)
-    parafoil_dynamics.forces = parafoil.Parafoil_Forces
-    #print(parafoil.Parafoil_Forces)
-
-    # input them into Dynamics
+    #update quaternion and gravity matrix
     parafoil_attitude.omega = parafoil._Parafoil_Control(parafoil_dynamics.turn_vel)
     parafoil_attitude._update_quaternion()
+    parafoil_attitude._to_euler()
+
+    #update parafoil forces and moments
+    Parafoil_Vector = parafoil._Parafoil_Forces_Moments(parafoil_dynamics.vel)
+    Payload_Vector = mpayload._Calc_Forces(parafoil_dynamics.vel)
+    Gravity_Vector = parafoil_attitude.body_g * 9.80665 * parafoil_dynamics.mass
+    print(Gravity_Vector)
+    parafoil_dynamics.forces = Parafoil_Vector + Payload_Vector + Gravity_Vector
+    
+    # input them into Dynamics
     parafoil_dynamics.update_dynamics(parafoil_attitude._rot_b_v())
     parafoil_dynamics._next_time_step()
     
@@ -55,9 +58,9 @@ while start == True or pos_z.history[-1] > 0:
     pos_z.update_history(parafoil_dynamics.pos[2])
     
     #update velocity vars
-    vel_x.update_history(parafoil_dynamics.vel[0])
-    vel_y.update_history(parafoil_dynamics.vel[1])
-    vel_z.update_history(parafoil_dynamics.vel[2])
+    vel_x.update_history(parafoil_dynamics.vel_r[0])
+    vel_y.update_history(parafoil_dynamics.vel_r[1])
+    vel_z.update_history(parafoil_dynamics.vel_r[2])
 
     force_x.update_history(parafoil.Parafoil_Forces[0])
     force_z.update_history(parafoil.Parafoil_Forces[2])
@@ -71,8 +74,8 @@ pos_z.plot(pos_x.history, None, "y", pos_x.var_name)
 vel_x.plot(None, None, "y", vel_x.var_name)
 #vel_y.plot(None, None, "y", vel_y.var_name)
 vel_z.plot(None, None, "y", vel_z.var_name)
-'''force_x.plot(None, None, "y", force_x.var_name)
-force_z.plot(None, None, "y", force_z.var_name)'''
+force_x.plot(None, None, "y", force_x.var_name)
+force_z.plot(None, None, "y", force_z.var_name)
 
 
 fig = plt.figure()
