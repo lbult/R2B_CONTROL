@@ -13,8 +13,11 @@ def _Skew_Symmetric_Operator(vector_to_skew):
                 [vector_to_skew[2],0,-vector_to_skew[0]],
                 [-vector_to_skew[1],vector_to_skew[0],0]])
 
+def _Calc_CG(l1, w1, l2, w2):
+    return (l1*w1+l2*w2)/(w1+w2)
+
 class ParafoilProperties():
-    def __init__(self, AR=2.5, alpha_0=0, a_0=2*pi, tau=0.25, epsilon=5*pi/180, surface=5, Cd0=0.01, delta=0.02, rigging=0, m=10):
+    def __init__(self, AR=2.5, alpha_0=0, a_0=2*pi, tau=0.25, epsilon=5*pi/180, surface=5, Cd0=0.01, delta=0.02, rigging=10*pi/180, m=10):
         #parameters set for thin airfoil theory (see DARE-PRG_R2B Report and Anderson)
         self.Parafoil_Forces = np.array([0,0,0])
         self.Parafoil_Moments = np.array([0,0,0])
@@ -74,9 +77,9 @@ class ParafoilProperties():
         #see if it is possible to cause an increase in drag if both are deflected
         span = sqrt(self.AR*self.surface)
         if self.Left_TE != 0 and self.Right_TE == 0:
-            return np.array([0,0, 2.1 * turn_velocity * self.Left_TE / span])
+            return np.array([0,0, 10.0 * turn_velocity * self.Left_TE / span])
         elif self.Right_TE != 0 and self.Left_TE == 0:
-            return np.array([0,0, -2.1 * turn_velocity * self.Right_TE / span])
+            return np.array([0,0, -10.0 * turn_velocity * self.Right_TE / span])
         else:
             return np.array([0,0,0])
 
@@ -176,9 +179,9 @@ class Quaternion():
         #set each individual element
         e0, e1, e2, e3 = self.quaternion
         #update roll, pitch, yaw
-        self.psi = np.arctan2(2 * (e0 * e1 + e2 * e3), e0 ** 2 + e3 ** 2 - e1 ** 2 - e2 ** 2)
+        self.phi = np.arctan2(2 * (e0 * e1 + e2 * e3), e0 ** 2 + e3 ** 2 - e1 ** 2 - e2 ** 2)
         self.theta = np.arcsin(2 * (e0 * e2 - e1 * e3))
-        self.phi = np.arctan2(2 * (e0 * e3 + e1 * e2), e0 ** 2 + e1 ** 2 - e2 ** 2 - e3 ** 2)
+        self.psi = np.arctan2(2 * (e0 * e3 + e1 * e2), e0 ** 2 + e1 ** 2 - e2 ** 2 - e3 ** 2)
         self.body_g = np.array([-sin(self.theta), sin(self.phi)*cos(self.theta), cos(self.phi)*cos(self.theta)])
     
     def _rot_b_v(self):
@@ -253,13 +256,12 @@ class Dynamics:
     def update_dynamics(self, rot_bv):
         #translational acceleration
         self.acc = self.forces * 1/self.mass
-        print(self.acc)
         self.vel = self.vel + self.acc * self.dt
-        self.vel_r = np.dot(rot_bv, self.vel) * np.array([1,1,-1])
+        self.vel_r = np.dot(np.matrix.transpose(rot_bv), self.vel) * np.array([1,1,-1])
         self.vel_mag = np.sqrt(self.vel.dot(self.vel))
         #vel_reference = self.vel *  np.array([1,1,-1]) #switch from right hand to attitude positive upwards
         #translation
-        self.pos = self.pos + self.vel_r*self.dt #+ 0.5 * (self.dt**2) * np.dot(np.matrix.transpose(rot_bv), self.acc)
+        self.pos = self.pos + self.vel_r*self.dt + 0.5 * (self.dt**2) * np.dot(np.matrix.transpose(rot_bv), self.acc)
         #attitude
         #self.angular_velocity = np.add(self.angular_velocity, np.dot(self.dt, self.angular_acceleration))
         self.gamma = atan(self.vel_r[2] / sqrt(self.vel_r[0]**2+self.vel_r[1]**2))
