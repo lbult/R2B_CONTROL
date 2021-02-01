@@ -24,17 +24,17 @@ vel_z = Variable("Velocity [z]")
 force_x = Variable("Drag [x]")
 force_z = Variable("Lift [z]")
 
-'''parafoil.Left_TE = 5*pi/180
-change_TE  = True'''
+parafoil.Left_TE = 5*pi/180
+change_TE  = True
 
 start=True
 
 while start == True or pos_z.history[-1] > 0:
-    '''
+    
     if ts >= 70 and change_TE:
         parafoil.Left_TE = 0
         parafoil.Right_TE = 5*pi/180
-        change_TE = False'''
+        change_TE = False
 
     #update quaternion and gravity matrix
     parafoil_attitude.omega = parafoil._Parafoil_Control(parafoil_dynamics.turn_vel)

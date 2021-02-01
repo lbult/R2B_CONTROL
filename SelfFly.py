@@ -74,9 +74,9 @@ class ParafoilProperties():
         #see if it is possible to cause an increase in drag if both are deflected
         span = sqrt(self.AR*self.surface)
         if self.Left_TE != 0 and self.Right_TE == 0:
-            return np.array([0,0, 0.71 * turn_velocity * self.Left_TE / span])
+            return np.array([0,0, 2.1 * turn_velocity * self.Left_TE / span])
         elif self.Right_TE != 0 and self.Left_TE == 0:
-            return np.array([0,0, -0.71 * turn_velocity * self.Right_TE / span])
+            return np.array([0,0, -2.1 * turn_velocity * self.Right_TE / span])
         else:
             return np.array([0,0,0])
 
@@ -105,7 +105,10 @@ class Variable():
         if subplot_one == None:
             fig = plt.figure()
             plt.plot(self.history)
+            plt.xlabel("Time")
+            plt.ylabel(self.var_name)
             plt.show()
+        
         elif x_or_y == "x":
             
             fig = plt.figure()
@@ -125,7 +128,7 @@ class Variable():
             fig = plt.figure()
             ax1 = fig.add_subplot(111)
             ax1.plot(subplot_one, self.history)
-            plt.ylabel(self.var_name)
+            plt.xlabel(self.var_name)
             plt.xlabel(ylabel)
 
             if subplot_two != None:
@@ -144,7 +147,7 @@ class Variable():
 class Quaternion():
     def __init__(self, omega=np.array([0,0,0])):
         self.quaternion = np.array([1,0,0,0])
-        self.dt = 0.05 #time interval of integration
+        self.dt = 0.025 #time interval of integration
         self.phi = 0
         self.theta = 0
         self.psi = 0 
@@ -224,14 +227,14 @@ For now, add yaw as an angular rate
 '''
 
 class Dynamics:
-    def __init__(self, dt=0.1, I=np.array([[1,0,0],[0,1,0],[0,0,1]]), mass=10, pos=np.array([0,0,100])):
+    def __init__(self, dt=0.1, I=np.array([[1,0,0],[0,1,0],[0,0,1]]), mass=10, pos=np.array([0,0,300])):
         #properties, I is inertia matrix, mass in Newton
         self.I = I
         self.mass = mass
         #translational
         self.pos = pos #reference system
         self.vel_r = np.array([0,0,0]) # reference system
-        self.vel = np.array([20,0,0]) #body system
+        self.vel = np.array([0,0,0]) #body system
         self.acc = np.array([0,0,0]) #body system
         #attitude, radians
         self.angular_velocity = np.array([[0,0,0]])
@@ -252,14 +255,14 @@ class Dynamics:
         self.acc = self.forces * 1/self.mass
         print(self.acc)
         self.vel = self.vel + self.acc * self.dt
-        self.vel_r = np.dot(np.matrix.transpose(rot_bv), self.vel) * np.array([1,1,1])
+        self.vel_r = np.dot(rot_bv, self.vel) * np.array([1,1,-1])
         self.vel_mag = np.sqrt(self.vel.dot(self.vel))
-        vel_reference = self.vel *  np.array([1,1,-1]) #switch from right hand to attitude positive upwards
+        #vel_reference = self.vel *  np.array([1,1,-1]) #switch from right hand to attitude positive upwards
         #translation
         self.pos = self.pos + self.vel_r*self.dt #+ 0.5 * (self.dt**2) * np.dot(np.matrix.transpose(rot_bv), self.acc)
         #attitude
         #self.angular_velocity = np.add(self.angular_velocity, np.dot(self.dt, self.angular_acceleration))
-        #self.gamma = atan(self.vel[2] / sqrt(self.vel[0]**2+self.vel[1]**2))
+        self.gamma = atan(self.vel_r[2] / sqrt(self.vel_r[0]**2+self.vel_r[1]**2))
         self.turn_vel =  self.vel_mag * cos(self.gamma)
 
     def _next_time_step(self):
