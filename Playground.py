@@ -19,14 +19,8 @@ y =[]
 while f < 1000:
     x.append(answer(zeta))
     y.append(second(zeta))
-    zeta += 2*pi/1000
+    zeta += pi/1000
     f+=1
-
-for i in x:
-    x.append(x[i])
-
-for j in y:
-    y.append(-y[j])
 
 plt.plot(x,y, 'r')
 
