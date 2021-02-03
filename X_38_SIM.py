@@ -85,6 +85,8 @@ while start == True or pos_z.history[-1] > 0:
     ts+= 0.025
     start=False
 
+print(ts)
+
 fig = plt.figure()
 plt.plot(vel_x.history)
 plt.plot(vel_x_2.history)
