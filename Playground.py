@@ -30,7 +30,7 @@ while f < 1000:
     y.append(second(zeta))
     k.append(one(zeta))
     r.append(two(zeta))
-    zeta += pi/1000
+    zeta += pi/500
     f+=1
 
 plt.plot(x,y, 'r')
