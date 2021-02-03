@@ -9,26 +9,34 @@ from mpl_toolkits import mplot3d
 density = 1.225 #kg/m^3
 
 class ParafoilProperties():
-    def __init__(self, AR=2.5, alpha_0=0, a_0=2*pi, tau=0.25, epsilon=5*pi/180, surface=5, Cd0=0.01, delta=0.02, rigging=0, m=10):
+    def __init__(self, alpha_0=0, a_0=2*pi, b = 43.6, surface=696.8, Cd0=0.01, delta=0.02, rigging=8, m=10, R=70.3, line_n = 697, line_d = 2.5):
         #parameters set for thin airfoil theory (see DARE-PRG_R2B Report and Anderson)
         self.Parafoil_Forces = np.array([0,0,0])
         self.Parafoil_Moments = np.array([0,0,0])
         self.Cl = 0
         
         #geometric properties
-        self.AR = AR
-        self.anhedral = epsilon
+        self.AR = b**2/surface
+        self.anhedral = b/(4*R)
+        self.b = b
         self.surface = surface
-        self.rigging = rigging
+        self.rigging = rigging*pi/180
         self.m = m
         
         #airfoil properties
-        self.a_0 = a_0*2*pi*AR*tanh(a_0/(2*pi*AR))/a_0 #reduction for LOW AR wing
+        self.a_0 = a_0*2*pi*self.AR*tanh(a_0/(2*pi*self.AR))/a_0 #reduction for LOW AR wing
         self.alpha_0 = alpha_0 #radians
-        self.tau = tau #function of Fourier coefficients A_n
-        self.a = a_0/(1+(1+tau)*(a_0/(pi*AR)))
+        a = 0.03714, 1
+        b = 0.14286, 5
+        self.tau = (self.AR - a[1])*(b[0]-a[0])/(b[1]-a[1])+a[0] #correction factor for small aspect ratio wings
+        self.a = a_0/(1+(1+self.tau)*(a_0/(pi*self.AR)))
         self.Cd_0 = Cd0 #find for airfoil shape
         self.delta = delta #estimate using 5.20 in Anderson, function of taper ratio
+
+        #line properties
+        self.R = R # mean lin length
+        self.line_d = line_d/1000 # self.line_d in meters
+        self.line_n = line_n
         
         #control properties
         self.Right_TE = 0
@@ -38,19 +46,34 @@ class ParafoilProperties():
 
     
     def _Calc_Lift(self, alpha, velocity):
+        """
+        Function for calculating the lift force of the parafoil
+        :param alpha: angle of attack of the parafoil, angle between the chord line of parafoil (horizontal axis of body reference system,
+         and freestream air (horizontal axis of environment reference system.
+        :param velocity: velocity of parafoil in the body reference system
+        :return: lift force of the parafoil, normal to chord (Fn), vertical in vehicle axis system
+        """
         #alpha in radians
         k1 = (3.33-1.33*self.AR) #for 1 < alpha < 2.5
         delta_cl = k1*(sin(alpha-self.alpha_0)**2)*cos(alpha-self.alpha_0)
         self.Cl = self.a * (alpha-self.alpha_0) * cos(self.anhedral)**2 + delta_cl
         #calculate total force
         return 0.5 * density * velocity**2 * self.Cl * self.surface
- 
+
     def _Calc_Drag(self, alpha, velocity):
+        """
+        Function for calculating drag force of the parafoil.
+        :param alpha: angle of attack of the parafoil, angle between the chord line of parafoil (horizontal axis of body reference system,
+         and freestream air (horizontal axis of environment reference system.
+        :param velocity: velocity of parafoil in the body reference system
+        :return: drag force of the parafoil, horizontal in vehicle axis system
+        """
         #add payload and line drag contribution
         k1 = (3.33-1.33*self.AR) #for 1 < alpha < 2.5
         delta_cd = k1*sin(alpha-self.alpha_0)**3
-        Cd = delta_cd + self.Cd_0 + (1+self.delta) * self.Cl**2 / (pi * self.AR)
-        Cd += 0.15
+        Cdl = self.line_n*self.R*self.line_d*cos(alpha)**3/self.surface
+        Cd = delta_cd + Cdl + self.Cd_0 + (1+self.delta) * self.Cl**2 / (pi * self.AR)
+        # Cd += 0.15
         return 0.5 * density * velocity**2 * Cd * self.surface
     
     def _Calc_Pitch(self, velocity):
@@ -58,8 +81,17 @@ class ParafoilProperties():
 
         return
 
-    def _Parafoil_Forces_Moments(self, w, u, vel, gamma, pitch):
-        alpa = atan(w/u)+pitch #redefine this to wrt airspeed
+    def _Parafoil_Forces_Moments(self, w, u, vel, gamma):
+        """
+        This function is the function that is called to actually compute all the parafoil forces, and puts them in the
+        correct matrix of forces.
+        :param w: vertical velocity, wrt body reference frame
+        :param u: horizontal velocity, wrt body reference frame
+        :param vel: magnitude of velocity vector
+        :param gamma: angle between incoming air and body horizontal axis
+        :return: force components in the body reference system
+        """
+        alpa = atan(w/u)#+pitch #redefine this to wrt airspeed
         L = abs(self._Calc_Lift(alpa, vel)*cos(gamma)) + self._Calc_Drag(alpa, vel)*sin(gamma)
         D = self._Calc_Drag(alpa, vel)*cos(gamma) - self._Calc_Lift(alpa, vel)*sin(gamma)
         self.Parafoil_Forces = np.array([-D ,0, -L])
@@ -67,8 +99,12 @@ class ParafoilProperties():
         self.Parafoil_Moments = np.array([0,Cm_pitch,0])
 
     def _Parafoil_Control(self, turn_velocity):
-        #trailing edge deflection in radians
-        #see if it is possible to cause an increase in drag if both are deflected
+        """
+        :param turn_velocity:
+        :return:
+        """
+        # trailing edge deflection in radians
+        # see if it is possible to cause an increase in drag if both are deflected
         span = sqrt(self.AR*self.surface)
         if self.Left_TE != 0 and self.Right_TE == 0:
             return np.array([0,0, 0.71 * turn_velocity * self.Left_TE / span])
@@ -84,6 +120,9 @@ class Payload():
         self.payload_cd = payload_cd
 
 class Variable():
+    """
+    Logger class, for storing and plotting any and all variables
+    """
     def __init__(self, var_name=""):
         self.history = []
         self.var_name = var_name
@@ -163,7 +202,7 @@ class Quaternion():
 
     def _rot_b_v(self):
         """
-        Rotate vector from body frame to vehicle frame.
+        Rotate vector from body frame to vehicle frame. <- confirm which one is body frame and which one is vehicle frame
 
         :param Theta: ([float]) vector to rotate, either as Euler angles or quaternion
         :return: ([float]) rotated vector
@@ -218,7 +257,8 @@ class Dynamics:
         self.acc = np.array([0,0,0]) #body system
         #attitude, radians
         self.angular_velocity = np.array([[0,0,0]])
-        self.angular_acceleration = np.array([[0,0,0]])
+        self.angular_acceleration = np.a
+        rray([[0,0,0]])
         #position, attitude log
         self.dt = dt
         self.time = 0
