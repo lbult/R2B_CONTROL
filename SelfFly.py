@@ -17,7 +17,7 @@ def _Calc_CG(l1, w1, l2, w2):
     return (l1*w1+l2*w2)/(w1+w2)
 
 class ParafoilProperties():
-    def __init__(self, AR=2.5, alpha_0=0, a_0=2*pi, tau=0.25, epsilon=5*pi/180, surface=5, Cd0=0.01, delta=0.02, rigging=0, m=10):
+    def __init__(self, alpha_0=0, a_0=2*pi, b=43.6, surface=5, Cd0=0.01, delta=0.02, rigging=0, m=10, R=70.3, line_n=697, line_d=2.5):
         #parameters set for thin airfoil theory (see DARE-PRG_R2B Report and Anderson)
         self.Parafoil_Forces = np.array([0,0,0])
         self.Parafoil_Moments = np.array([0,0,0])
