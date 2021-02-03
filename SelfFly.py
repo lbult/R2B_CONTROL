@@ -69,6 +69,7 @@ class ParafoilProperties():
         alpa = np.arctan2(vel[2], vel[0]) #+pitch redefine this to wrt airspeed
         self.Parafoil_Forces = self._Calc_Lift(alpa, vel) + self._Calc_Drag(alpa, vel)
         return self._Calc_Lift(alpa, vel) + self._Calc_Drag(alpa, vel)
+        
         #Cm_pitch = self._Calc_Pitch(0)
         #self.Parafoil_Moments = np.array([0,Cm_pitch,0])
 
