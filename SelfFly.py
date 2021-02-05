@@ -213,15 +213,8 @@ class Quaternion():
 
         :param Theta: ([float]) vector to rotate, either as Euler angles or quaternion
         :return: ([float]) rotated vector
-        if len(attitude) == 3:
-            phi, th, psi = attitude
-            return np.array([
-                [np.cos(th) * np.cos(psi), np.cos(th) * np.sin(psi), -np.sin(th)],
-                [np.sin(phi) * np.sin(th) * np.cos(psi) - np.cos(phi) * np.sin(psi),
-                 np.sin(phi) * np.sin(th) * np.sin(psi) + np.cos(phi) * np.cos(psi), np.sin(phi) * np.cos(th)],
-                [np.cos(phi) * np.sin(th) * np.cos(psi) + np.sin(phi) * np.sin(psi),
-                 np.cos(phi) * np.sin(th) * np.sin(psi) - np.sin(phi) * np.cos(psi), np.cos(phi) * np.cos(th)]
-            ])"""
+        """
+        
         e0, e1, e2, e3 = self.quaternion
         transfer = np.array([[-1 + 2 * (e0 ** 2 + e1 ** 2), 2 * (e1 * e2 + e3 * e0), 2 * (e1 * e3 - e2 * e0)],
                             [2 * (e1 * e2 - e3 * e0), -1 + 2 * (e0 ** 2 + e2 ** 2), 2 * (e2 * e3 + e1 * e0)],
