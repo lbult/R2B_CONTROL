@@ -79,6 +79,9 @@ class ParafoilProperties():
         #add payload and line drag contribution
         k1 = (3.33-1.33*self.AR) #for 1 < alpha < 2.5
         delta_cd = k1*sin(alpha+self.rigging-self.alpha_0)**3
+        Cdl = self.line_n*self.R*self.line_d*cos(alpha)**3/self.surface
+        Cd = delta_cd + Cdl + self.Cd_0 + (1+self.delta) * self.Cl**2 / (pi * self.AR)
+        # Cd += 0.15
         Cd = delta_cd + self.Cd_0 + (1+self.delta) * self.Cl**2 / (pi * self.AR)
         return -0.5 * density * Cd * self.surface * sqrt(velocity.dot(velocity)) * velocity
     
@@ -119,6 +122,9 @@ class Payload():
         return -0.5 * density * self.payload_cd * velocity * sqrt(velocity.dot(velocity))
 
 class Variable():
+    """
+    Logger class, for storing and plotting any and all variables
+    """
     def __init__(self, var_name=""):
         self.history = []
         self.var_name = var_name
