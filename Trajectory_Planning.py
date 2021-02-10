@@ -5,8 +5,8 @@ import numpy as np
 
 #boundary conditions
 init_height = 10000
-initial_conditions = np.array([0,0,0])
-final_conditions = np.array([2.5,.5,-pi])
+initial_conditions = np.array([-50,40,0])
+final_conditions = np.array([0,0,0])
 tau_f = init_height
 
 #necessary system parameters
@@ -37,23 +37,24 @@ print(arclengths)
 #initial_conditions = initial_conditions + np.array([0,0,-pi/2])
 
 #x_1l = initial_conditions[0] + r*sin(initial_conditions[2]+arclengths[0]) - r*sin(initial_conditions[2])
-x_1l =  r*sin(atan(50/40)+arclengths[0]) - r*sin(atan(50/40))
+x_1l = -50 + r*sin(-arclengths[0]) #- r*sin(atan(50/40))
 #y_1l = initial_conditions[1] + r*cos(initial_conditions[2]+arclengths[0]) - r*cos(initial_conditions[2])
-y_1l = - r*cos(atan(50/40)+arclengths[0]) + r*cos(atan(50/40))
-phi_1l = atan(50/40)+arclengths[0]
+y_1l = 40 + r*cos(arclengths[0]) - r*cos(0)
+phi_1l = arclengths[0]
 
-x_2l = x_1l+arclengths[1]*cos(phi_1l)
-y_2l = y_1l+arclengths[1]*sin(phi_1l)
+x_2l = x_1l+(arclengths[1]+10)*cos(phi_1l)
+y_2l = y_1l+(arclengths[1]+10)*sin(phi_1l)
 phi_2l = phi_1l
 
-x_3l = x_2l - r*sin(phi_1l-arclengths[2]) + r*sin(phi_1l)
-y_3l = y_2l + r*cos(phi_1l-arclengths[2]) - r*cos(phi_1l)
+x_3l = x_2l - r*sin(phi_1l-arclengths[0]) + r*sin(-phi_1l)
+y_3l = y_2l - r*cos(phi_1l-arclengths[0]) + r*cos(-phi_1l)
 phi_3l = phi_1l - arclengths[2]
 
-update = [0,x_1l, x_2l, x_3l]
+update = [-50,x_1l, x_2l, x_3l]
 
-update_2 = [0,y_1l, y_2l, y_3l]
+update_2 = [40,y_1l, y_2l, y_3l]
 plt.plot(update,update_2, 'r')
+plt.gca().set_aspect('equal', adjustable='box')
 
 plt.show()
 

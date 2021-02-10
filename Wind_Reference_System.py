@@ -11,10 +11,11 @@ class _All_Dubin_Paths():
         self.r_traj = r_traj
         self.gamma_traj = gamma_traj
         self.gamma_g_traj = gamma_g_traj
-        self.gammas = atan(abs(self.pos_init[1])/abs(self.pos_init[0]))
+        self.gammas = atan(self.pos_init[1]/self.pos_init[0])
         self.mus = self.gammas-self.pos_init[2]
         self.lambdas = self.gammas-self.pos_final[2]
         self.d = sqrt((pos_init[0])**2 + (pos_init[1])**2)
+        print(self.d)
 
         #initiate the cost of all paths
         self.tau_rsl = 0
