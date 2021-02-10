@@ -5,8 +5,8 @@ import numpy as np
 
 #boundary conditions
 init_height = 10000
-initial_conditions = np.array([50,50,pi/4])
-final_conditions = np.array([0,0,0])
+initial_conditions = np.array([0,0,0])
+final_conditions = np.array([2.5,.5,-pi])
 tau_f = init_height
 
 #necessary system parameters
@@ -16,10 +16,10 @@ sigma = pi/6
 
 gamma_min = atan(tan(gamma_g)/cos(sigma))
 V_min = sqrt(V_g**2 * cos(gamma_min) / (cos(gamma_g)*cos(sigma)))
-r_min = V_min**2 * cos(gamma_min) / (9.81* tan(sigma))
+r_min = (V_min)**2 * cos(gamma_min) / (9.81* tan(sigma))
 tau_full = abs(2*pi*r_min/(V_min*cos(gamma_min)) * V_min * sin(gamma_min))
 
-print(V_min * sin(gamma_min))
+print(r_min)
 
 minimum_conditions = _All_Dubin_Paths(pos_init=initial_conditions, 
         pos_final=final_conditions,
@@ -34,12 +34,15 @@ arclengths = minimum_conditions.rsl_traj
 
 print(arclengths)
 
+#initial_conditions = initial_conditions + np.array([0,0,-pi/2])
 
-x_1l = initial_conditions[0] + r*sin(initial_conditions[2]+arclengths[0]) - r*sin(initial_conditions[2])
-y_1l = initial_conditions[1] - r*cos(initial_conditions[2]+arclengths[0]) + r*cos(initial_conditions[2])
-phi_1l = initial_conditions[2]+arclengths[0]
+#x_1l = initial_conditions[0] + r*sin(initial_conditions[2]+arclengths[0]) - r*sin(initial_conditions[2])
+x_1l =  r*sin(atan(50/40)+arclengths[0]) - r*sin(atan(50/40))
+#y_1l = initial_conditions[1] + r*cos(initial_conditions[2]+arclengths[0]) - r*cos(initial_conditions[2])
+y_1l = - r*cos(atan(50/40)+arclengths[0]) + r*cos(atan(50/40))
+phi_1l = atan(50/40)+arclengths[0]
 
-x_2l = x_1l-arclengths[1]*cos(phi_1l)
+x_2l = x_1l+arclengths[1]*cos(phi_1l)
 y_2l = y_1l+arclengths[1]*sin(phi_1l)
 phi_2l = phi_1l
 
@@ -47,9 +50,11 @@ x_3l = x_2l - r*sin(phi_1l-arclengths[2]) + r*sin(phi_1l)
 y_3l = y_2l + r*cos(phi_1l-arclengths[2]) - r*cos(phi_1l)
 phi_3l = phi_1l - arclengths[2]
 
-update = [initial_conditions[0],x_1l, x_2l, x_3l]
+update = [0,x_1l, x_2l, x_3l]
 
-update_2 = [initial_conditions[1],y_1l, y_2l, y_3l]
+update_2 = [0,y_1l, y_2l, y_3l]
 plt.plot(update,update_2, 'r')
 
 plt.show()
+
+print(atan(50/40))

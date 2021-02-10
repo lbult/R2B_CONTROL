@@ -41,9 +41,9 @@ class _All_Dubin_Paths():
         t_rsl = - self.lambdas - atan(2*self.r_traj/p_rsl) + atan((-self.r_traj*cos(self.lambdas)-self.r_traj*cos(self.mus))/(self.d+self.r_traj*sin(self.lambdas)+self.r_traj*sin(self.mus)))
         
         tau_1 = self.r_traj*tan(self.gamma_traj)*(self.lambdas-self.mus+2*t_rsl) + p_rsl*tan(self.gamma_g_traj)
-        if tau_1 > 0:
-            self.tau_rsl = tau_1    
-            self.rsl_traj = np.array([t_rsl, p_rsl, q_rsl])
+        
+        self.tau_rsl = abs(tau_1)    
+        self.rsl_traj = np.array([t_rsl, p_rsl, q_rsl])
 
     def _LSR(self):
         p_lsr = sqrt(abs(-2*self.r_traj**2 + self.d**2 + cos(self.lambdas-self.mus)*2*self.r_traj**2 - 2*self.r_traj*self.d*(sin(self.lambdas)+ sin(self.mus))))
@@ -51,9 +51,9 @@ class _All_Dubin_Paths():
         t_lsr = self.lambdas + atan(2*self.r_traj/p_lsr) - atan((self.r_traj*cos(self.lambdas)+self.r_traj*cos(self.mus))/(self.d-self.r_traj*sin(self.lambdas)-self.r_traj*sin(self.mus)))
 
         tau_2 = self.r_traj*tan(self.gamma_traj)*(self.lambdas-self.mus+2*t_lsr) + p_lsr*tan(self.gamma_g_traj)
-        if tau_2 > 0:
-            self.tau_lsr = tau_2    
-            self.lsr_traj = np.array([t_lsr, p_lsr, q_lsr])
+
+        self.tau_lsr = abs(tau_2)    
+        self.lsr_traj = np.array([t_lsr, p_lsr, q_lsr])
 
     def _RSR(self):
         p_rsr = sqrt(abs(2*self.r_traj**2 + self.d**2 - cos(self.lambdas-self.mus)*2*self.r_traj**2 + 2*self.r_traj*self.d*(-sin(self.lambdas)+ sin(self.mus))))
@@ -61,9 +61,9 @@ class _All_Dubin_Paths():
         t_rsr = - self.lambdas  - atan((self.r_traj*cos(self.lambdas)-self.r_traj*cos(self.mus))/(self.d+self.r_traj*sin(self.lambdas)-self.r_traj*sin(self.mus)))
 
         tau_3 = self.r_traj*tan(self.gamma_traj)*(-self.lambdas+self.mus+2*t_rsr) + p_rsr*tan(self.gamma_g_traj)
-        if tau_3 > 0:
-            self.tau_rsr = tau_3    
-            self.rsr_traj = np.array([t_rsr, p_rsr, q_rsr])
+        
+        self.tau_rsr = abs(tau_3)    
+        self.rsr_traj = np.array([t_rsr, p_rsr, q_rsr])
 
     def _LSL(self):
         p_lsl = sqrt(abs(2*self.r_traj**2 + self.d**2 - cos(self.lambdas-self.mus)*2*self.r_traj**2 + 2*self.r_traj*self.d*(-sin(self.lambdas)+ sin(self.mus))))
@@ -71,29 +71,35 @@ class _All_Dubin_Paths():
         t_lsl = self.lambdas  - atan((self.r_traj*cos(self.lambdas)-self.r_traj*cos(self.mus))/(self.d-self.r_traj*sin(self.lambdas)+self.r_traj*sin(self.mus)))
 
         tau_4 = self.r_traj*tan(self.gamma_traj)*(-self.lambdas+self.mus) + p_lsl*tan(self.gamma_g_traj)
-        if tau_4 > 0:
-            self.tau_lsl = tau_4   
-            self.lsl_traj = np.array([t_lsl, p_lsl, q_lsl])
+        
+        self.tau_lsl = abs(tau_4)   
+        self.lsl_traj = np.array([t_lsl, p_lsl, q_lsl])
 
     def _LRL(self):
-        p_lrl = acos(0.125 * (6 + 2*cos(self.lambdas - self.mus)+ 2*self.d * (sin(self.lambdas) - sin(self.mus))/self.r_traj - self.d**2/self.r_traj**2))
-        t_lrl  = self.lambdas + p_lrl/2 - atan((self.r_traj*cos(self.lambdas)-self.r_traj*cos(self.mus))/(self.d-self.r_traj*sin(self.lambdas)+self.r_traj*sin(self.mus)))
-        q_lrl  = self.lambdas - t_lrl + p_lrl - self.mus
+        try:
+            p_lrl = acos(0.125 * (6 + 2*cos(self.lambdas - self.mus)+ 2*self.d * (sin(self.lambdas) - sin(self.mus))/self.r_traj - self.d**2/self.r_traj**2))
+            t_lrl  = self.lambdas + p_lrl/2 - atan((self.r_traj*cos(self.lambdas)-self.r_traj*cos(self.mus))/(self.d-self.r_traj*sin(self.lambdas)+self.r_traj*sin(self.mus)))
+            q_lrl  = self.lambdas - t_lrl + p_lrl - self.mus
 
-        tau_5 = self.r_traj * tan(self.gamma_traj) * (self.lambdas-self.mus+p_lrl)
-        if tau_5 > 0:
-            self.tau_lrl = tau_5
+            tau_5 = self.r_traj * tan(self.gamma_traj) * (self.lambdas-self.mus+p_lrl)
+            
+            self.tau_lrl = abs(tau_5)
             self.lrl_traj = np.array([t_lrl, p_lrl, q_lrl])
+        except:
+            print("ValueError: math domain error")
 
     def _RLR(self):
-        p_rlr = acos(0.125 * (6 + 2*cos(self.lambdas - self.mus)- 2*self.d * (sin(self.lambdas) - sin(self.mus))/self.r_traj - self.d**2/self.r_traj**2))
-        t_rlr  = -self.lambdas + p_rlr/2 + atan(-(self.r_traj*cos(self.lambdas)+self.r_traj*cos(self.mus))/(self.d+self.r_traj*sin(self.lambdas)-self.r_traj*sin(self.mus)))
-        q_rlr  = -self.lambdas - t_rlr + p_rlr
+        try:
+            p_rlr = acos(0.125 * (6 + 2*cos(self.lambdas - self.mus)- 2*self.d * (sin(self.lambdas) - sin(self.mus))/self.r_traj - self.d**2/self.r_traj**2))
+            t_rlr  = -self.lambdas + p_rlr/2 + atan(-(self.r_traj*cos(self.lambdas)+self.r_traj*cos(self.mus))/(self.d+self.r_traj*sin(self.lambdas)-self.r_traj*sin(self.mus)))
+            q_rlr  = -self.lambdas - t_rlr + p_rlr
 
-        tau_6 = self.r_traj * tan(self.gamma_traj) * (-self.lambdas+self.mus+2*p_rlr)
-        if tau_6 > 0:
-            self.tau_rlr = tau_6
+            tau_6 = self.r_traj * tan(self.gamma_traj) * (-self.lambdas+self.mus+2*p_rlr)
+            
+            self.tau_rlr = abs(tau_6)
             self.rlr_traj = np.array([t_rlr, p_rlr, q_rlr])
+        except:
+            print("ValueError: math domain error")
 
 
     def _Minimum_Tau(self):
