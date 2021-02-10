@@ -17,7 +17,7 @@ def _Calc_CG(l1, w1, l2, w2):
     return (l1*w1+l2*w2)/(w1+w2)
 
 class ParafoilProperties():
-    def __init__(self, alpha_0=0, a_0=2*pi, b=43.6, surface=5, Cd0=0.01, delta=0.02, rigging=0, m=10, R=70.3, line_n=697, line_d=2.5):
+    def __init__(self, alpha_0=0, a_0=2*pi, b=43.6, surface=5, Cd0=0.01, delta=0.02, rigging=0, m=10, R=70.3, line_n=697, line_d=2.5, thickness=0):
         #parameters set for thin airfoil theory (see DARE-PRG_R2B Report and Anderson)
         self.Parafoil_Forces = np.array([0,0,0])
         self.Parafoil_Moments = np.array([0,0,0])
@@ -30,6 +30,8 @@ class ParafoilProperties():
         self.surface = surface
         self.rigging = rigging*pi/180
         self.m = m
+        self.t = thickness
+        self.c = surface/b # TODO review this later, chord is calculated as surface area divided by span?, so basically assumes shape of parafoil?
         
         #airfoil properties
         self.a_0 = a_0*2*pi*self.AR*tanh(a_0/(2*pi*self.AR))/a_0 #reduction for LOW AR wing
@@ -88,6 +90,7 @@ class ParafoilProperties():
     def _Calc_Pitch(self, velocity):
         #assume airfoil pitch coefficient negligible for now
 
+
         return
 
     def _Parafoil_Forces_Moments(self, vel):
@@ -108,6 +111,38 @@ class ParafoilProperties():
             return np.array([0,0, -10.0 * turn_velocity * self.Right_TE / span])
         else:
             return np.array([0,0,0])
+
+    def _Apparent_Masses(self):
+        epsilon_0 = 2*self.anhedral
+        flat_b = 2*np.sin(epsilon_0)*self.R
+        k = np.array([0.848, 1, self.AR/(1+self.AR)]) # array: [kA, kB, kC]
+        k_star = np.array([0.84*self.AR/(1+self.AR), 1.161*self.AR/(1+self.AR), 0.848]) # array: [kA*, kB*, kC*]
+
+        app_m_fl = np.array([density*pi*(self.t**2)*flat_b/4, density*pi*(self.t**2)*self.c/4, density*pi*(self.c**2)*flat_b/4])\
+                  *k
+        # array: [app_mass_x_fl, app_mass_y_fl, app_mass_z_fl]
+
+        app_MMOI_fl = np.array([density*pi*(self.c**2)*(flat_b**3)/48, density*4*flat_b*(self.c**4)/(48*pi), density*pi*(self.t**2)*(flat_b**3)/48])\
+                  *k_star
+        # array: [app_MMOIx_fl, app_MMOIy_fl, app_MMOIz_fl]
+
+        a_bar = (self.R-self.R*np.cos(epsilon_0))/(2*self.R*np.sin(epsilon_0))
+        a1 = self.R*np.sin(epsilon_0)/epsilon_0
+        a2 = a1*app_m_fl[1]/(app_m_fl[1]+app_MMOI_fl[0]/(self.R**2))
+        a12 = a1 - a2
+
+        app_m_curv = np.array([app_m_fl[0]*(1+8*(a_bar**2)/3),
+                               ((self.R**2)*app_m_fl[1]+app_MMOI_fl[0])/(a1**2),
+                               app_m_fl[2]*np.sqrt(1+2*(a_bar**2)(1-(self.t/self.c)**2))])
+        # array: [app_mx_curv, app_my_curv, app_mz_curv]
+
+
+        app_MMOI_curv = np.array([((a12*self.R)**2*app_m_fl[1]+app_MMOI_fl[0]*a2**2)/(a1**2),
+                                 app_MMOI_fl[1](1+pi*(1+self.AR)*self.AR*(a_bar*(self.t/self.c))/6),
+                                  (1+8*a_bar**2)*app_MMOI_fl[2]])
+        # array: [app_MMOIx_curv, app_MMOIy_curv, app_MMOIz_curv]
+        return
+
 
 class Payload():
     def __init__(self, M=10, shape="", payload_cd=1, payload_surface=0.01):
