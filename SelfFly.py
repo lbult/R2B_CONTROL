@@ -298,8 +298,29 @@ class Dynamics:
         self.log = None
         self.time = 0
 
-"""
+
 class Wind():
-    def __init__():
-Most important for accurate landing, exclude for now?        
-"""
+    '''
+    Class which sets up the wind coordinate system and wind field
+    '''
+    def __init__(self, w_x=2.0, w_y=2.0, dt=0.025):
+        self.wind_field = np.array([w_x, w_y, 0])
+        self.time = 0
+        self.dt = dt
+
+    def _Wind_Reference_System(self):
+        
+        return 
+    
+    '''
+    def _Varying(self):
+        Add variations with time or altitude?
+        Dryden Gust model?
+
+    def _Update_Wind_Field(self):
+        """
+        Update wind field and position of parafoil system within 
+         wind reference system
+        """
+        self.time += self.dt
+    '''
