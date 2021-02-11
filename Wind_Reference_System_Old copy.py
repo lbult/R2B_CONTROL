@@ -39,13 +39,14 @@ class _All_Dubin_Paths():
 
 
     def _RSL(self):
-        Lcc = sqrt((self.pos_final[0]-self.r_traj*sin(self.pos_final[2])-self.r_traj)**2+ (self.pos_final[1]+self.r_traj*cos(self.pos_final[2]))**2)
-        Ls = sqrt(Lcc**2 - 4*self.r_traj**2)
-        phi_1 = -np.arctan2(self.pos_final[1]+self.r_traj*cos(self.pos_final[2]), self.pos_final[0]-self.r_traj*sin(self.pos_final[2])-self.r_traj) + np.arctan2(2*self.r_traj, Ls) + pi/2
-        phi_2 = self.pos_final[2] + phi_1 - pi/2
+        p_rsl = sqrt(self.d**2 - 4*self.r_traj**2) #(-2*self.r_traj**2 + self.d**2 + np.cos(self.lambdas-self.mus)*2*self.r_traj**2 + 2*self.r_traj*self.d*(np.sin(self.lambdas)+ np.sin(self.mus)))**0.5
+        q_rsl = - self.mus - np.arctan2(2*self.r_traj, p_rsl) + np.arctan2((-self.r_traj*cos(self.lambdas)-self.r_traj*cos(self.mus)), (self.d+self.r_traj*sin(self.lambdas)+self.r_traj*sin(self.mus)))
+        t_rsl = - self.lambdas - np.arctan2(2*self.r_traj, p_rsl) + np.arctan2( (-self.r_traj*cos(self.lambdas)-self.r_traj*cos(self.mus)), (self.d+self.r_traj*sin(self.lambdas)+self.r_traj*sin(self.mus)))
         
-        self.tau_rsl = ((abs(phi_1)+abs(phi_2))*self.r_traj + Ls) * tan(self.gamma_traj)    
-        self.rsl_traj = np.array([phi_1, Ls, phi_2])
+        tau_1 = self.r_traj*tan(self.gamma_traj)*(self.lambdas-self.mus+2*t_rsl) + p_rsl*tan(self.gamma_g_traj)
+        
+        self.tau_rsl = abs(tau_1)    
+        self.rsl_traj = np.array([t_rsl, p_rsl, q_rsl])
 
     def _LSR(self):
         p_lsr = sqrt(abs(-2*self.r_traj**2 + self.d**2 + cos(self.lambdas-self.mus)*2*self.r_traj**2 - 2*self.r_traj*self.d*(sin(self.lambdas)+ sin(self.mus))))
@@ -71,7 +72,11 @@ class _All_Dubin_Paths():
         phi_1 = np.arctan2( self.pos_final[1]+self.r_traj*cos(self.pos_final[2])-self.r_traj, self.pos_final[0]-self.r_traj*sin(self.pos_final[2]))
         phi_2 = self.pos_final[2]-phi_1
         Ls = sqrt((self.pos_final[1]+self.r_traj*cos(self.pos_final[2])-self.r_traj)**2 + (self.pos_final[0]-self.r_traj*sin(self.pos_final[2]))**2)
-        
+        #p_lsl = sqrt(abs(2*self.r_traj**2 + self.d**2 - cos(self.lambdas-self.mus)*2*self.r_traj**2 + 2*self.r_traj*self.d*(-sin(self.lambdas)+ sin(self.mus))))
+        #q_lsl = - self.mus + atan((self.r_traj*cos(self.lambdas)-self.r_traj*cos(self.mus))/(self.d-self.r_traj*sin(self.lambdas)+self.r_traj*sin(self.mus)))
+        #t_lsl = self.lambdas  - atan((self.r_traj*cos(self.lambdas)-self.r_traj*cos(self.mus))/(self.d-self.r_traj*sin(self.lambdas)+self.r_traj*sin(self.mus)))
+
+        #tau_4 = self.r_traj*tan(self.gamma_traj)*(-self.lambdas+self.mus) + p_lsl*tan(self.gamma_g_traj)
         self.tau_lsl = (Ls + self.r_traj*(phi_1+phi_2))*tan(self.gamma_traj)
         self.lsl_traj = np.array([phi_1, Ls, phi_2])
         
