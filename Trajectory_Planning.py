@@ -73,7 +73,7 @@ def draw_circle(theta, theta_offset, x_1, y_1):
                 y.append(y_1+r*sin(theta_m))
                 theta_m += dtheta
         
-
+'''
 draw_circle(-arclengths_1[0], pi, r, 0)
 phi_1l = pi/2-arclengths_1[0]
 
@@ -91,8 +91,9 @@ plt.plot(f,g,'r')
 
 plt.show()
 '''
-For plotting LSL
+#For plotting LSL
 draw_circle(arclengths[0], -pi/2, 0, r)
+phi_1l = arclengths[0]
 f=x
 g=y
 
@@ -106,4 +107,3 @@ plt.plot(x,y,'r')
 plt.plot(f,g,'r')
 
 plt.show()
-'''
