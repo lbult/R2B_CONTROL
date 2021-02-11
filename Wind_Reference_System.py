@@ -11,13 +11,6 @@ class _All_Dubin_Paths():
         self.r_traj = r_traj
         self.gamma_traj = gamma_traj
         self.gamma_g_traj = gamma_g_traj
-        self.gammas = np.arctan2(self.pos_init[1], self.pos_init[0])
-        self.mus = self.gammas-self.pos_final[2]
-        self.lambdas = self.gammas-self.pos_init[2]
-        self.d = sqrt((pos_init[0])**2 + (pos_init[1])**2)
-
-        print(self.mus)
-        print(self.lambdas)
 
         #initiate the cost of all paths
         self.tau_rsl = 0
@@ -37,87 +30,125 @@ class _All_Dubin_Paths():
         self.rlr_traj = np.array([0,0,0])
         self.lrl_traj = np.array([0,0,0])
 
+        #trajectory as x, y, heading, altitude lists
+        self.pos_x = [0]
+        self.pos_y = [0]
+        self.heading = [0]
+        self.alt = [0]
+
 
     def _RSL(self):
-        Lcc = sqrt((self.pos_final[0]-self.r_traj*sin(self.pos_final[2])-self.r_traj)**2+ (self.pos_final[1]+self.r_traj*cos(self.pos_final[2]))**2)
-        Ls = sqrt(Lcc**2 - 4*self.r_traj**2)
-        phi_1 = -np.arctan2(self.pos_final[1]+self.r_traj*cos(self.pos_final[2]), self.pos_final[0]-self.r_traj*sin(self.pos_final[2])-self.r_traj) + np.arctan2(2*self.r_traj, Ls) + pi/2
-        phi_2 = self.pos_final[2] + phi_1 - pi/2
-        
-        self.tau_rsl = ((abs(phi_1)+abs(phi_2))*self.r_traj + Ls) * tan(self.gamma_traj)    
-        self.rsl_traj = np.array([phi_1, Ls, phi_2])
+        try:
+            Lcc = sqrt((self.pos_final[0]-self.r_traj*sin(self.pos_final[2])-self.r_traj)**2+ (self.pos_final[1]+self.r_traj*cos(self.pos_final[2]))**2)
+            Ls = sqrt(Lcc**2 - 4*self.r_traj**2)
+            phi_1 = -np.arctan2(self.pos_final[1]+self.r_traj*cos(self.pos_final[2]), self.pos_final[0]-self.r_traj*sin(self.pos_final[2])-self.r_traj) + np.arctan2(2*self.r_traj, Ls) + pi/2
+            if phi_1 < 0:
+                phi_1 += 2*pi
+            phi_2 = self.pos_final[2] + phi_1 - pi/2
+            if phi_2 < 0:
+                phi_2 += 2*pi
+            
+            self.tau_rsl = abs((abs(phi_1)+abs(phi_2))*self.r_traj + Ls) * tan(self.gamma_traj)    
+            self.rsl_traj = np.array([phi_1, Ls, phi_2])
+        except:
+            print("Math Domain Error")
+
 
     def _LSR(self):
-        p_lsr = sqrt(abs(-2*self.r_traj**2 + self.d**2 + cos(self.lambdas-self.mus)*2*self.r_traj**2 - 2*self.r_traj*self.d*(sin(self.lambdas)+ sin(self.mus))))
-        q_lsr = self.mus + atan(2*self.r_traj/p_lsr) - atan((self.r_traj*cos(self.lambdas)+self.r_traj*cos(self.mus))/(self.d-self.r_traj*sin(self.lambdas)-self.r_traj*sin(self.mus)))
-        t_lsr = self.lambdas + atan(2*self.r_traj/p_lsr) - atan((self.r_traj*cos(self.lambdas)+self.r_traj*cos(self.mus))/(self.d-self.r_traj*sin(self.lambdas)-self.r_traj*sin(self.mus)))
+        try:
+            Lcc = sqrt((self.pos_final[0]-self.r_traj*sin(self.pos_final[2])+self.r_traj)**2+ (self.pos_final[1]-self.r_traj*cos(self.pos_final[2]))**2)
+            Ls = sqrt(Lcc**2 - 4*self.r_traj**2)
+            phi_1 = -pi/2 + abs(np.arctan2(self.pos_final[1]-self.r_traj*cos(self.pos_final[2]), self.pos_final[0]-self.r_traj*sin(self.pos_final[2]) +self.r_traj)) + np.arctan2(2*self.r_traj, Ls)
+            if phi_1 < 0:
+                phi_1 += 2*pi
+            phi_2 = -self.pos_final[2] + phi_1 + pi/2
+            if phi_2 < 0:
+                phi_2 += 2*pi
 
-        tau_2 = self.r_traj*tan(self.gamma_traj)*(self.lambdas-self.mus+2*t_lsr) + p_lsr*tan(self.gamma_g_traj)
+            self.tau_lsr = abs((Ls + self.r_traj*(phi_1+phi_2))*tan(self.gamma_traj))
+            self.lsr_traj = np.array([phi_1, Ls, phi_2])
 
-        self.tau_lsr = abs(tau_2)    
-        self.lsr_traj = np.array([t_lsr, p_lsr, q_lsr])
-
-    def _RSR(self):
-        p_rsr = sqrt(abs(2*self.r_traj**2 + self.d**2 - cos(self.lambdas-self.mus)*2*self.r_traj**2 + 2*self.r_traj*self.d*(-sin(self.lambdas)+ sin(self.mus))))
-        q_rsr = self.mus - atan((self.r_traj*cos(self.lambdas)-self.r_traj*cos(self.mus))/(self.d+self.r_traj*sin(self.lambdas)-self.r_traj*sin(self.mus)))
-        t_rsr = - self.lambdas  - atan((self.r_traj*cos(self.lambdas)-self.r_traj*cos(self.mus))/(self.d+self.r_traj*sin(self.lambdas)-self.r_traj*sin(self.mus)))
-
-        tau_3 = self.r_traj*tan(self.gamma_traj)*(-self.lambdas+self.mus+2*t_rsr) + p_rsr*tan(self.gamma_g_traj)
-        
-        self.tau_rsr = abs(tau_3)    
-        self.rsr_traj = np.array([t_rsr, p_rsr, q_rsr])
+        except:
+            print("Math Domain Error")
 
     def _LSL(self):
-        phi_1 = np.arctan2( self.pos_final[1]+self.r_traj*cos(self.pos_final[2])-self.r_traj, self.pos_final[0]-self.r_traj*sin(self.pos_final[2]))
-        phi_2 = self.pos_final[2]-phi_1
-        Ls = sqrt((self.pos_final[1]+self.r_traj*cos(self.pos_final[2])-self.r_traj)**2 + (self.pos_final[0]-self.r_traj*sin(self.pos_final[2]))**2)
-        
-        self.tau_lsl = (Ls + self.r_traj*(phi_1+phi_2))*tan(self.gamma_traj)
-        self.lsl_traj = np.array([phi_1, Ls, phi_2])
-        
-
-    def _LRL(self):
         try:
-            p_lrl = acos(0.125 * (6 + 2*cos(self.lambdas - self.mus)+ 2*self.d * (sin(self.lambdas) - sin(self.mus))/self.r_traj - self.d**2/self.r_traj**2))
-            t_lrl  = self.lambdas + p_lrl/2 - atan((self.r_traj*cos(self.lambdas)-self.r_traj*cos(self.mus))/(self.d-self.r_traj*sin(self.lambdas)+self.r_traj*sin(self.mus)))
-            q_lrl  = self.lambdas - t_lrl + p_lrl - self.mus
+            phi_1 = np.arctan2( self.pos_final[1]+self.r_traj*cos(self.pos_final[2])-self.r_traj, self.pos_final[0]-self.r_traj*sin(self.pos_final[2])) 
+            if phi_1 < 0:
+                phi_1 += 2*pi
+            phi_2 = self.pos_final[2]-phi_1
+            if phi_2 < 0:
+                phi_2 += 2*pi
+            Ls = sqrt((self.pos_final[1]+self.r_traj*cos(self.pos_final[2])-self.r_traj)**2 + (self.pos_final[0]-self.r_traj*sin(self.pos_final[2]))**2)
 
-            tau_5 = self.r_traj * tan(self.gamma_traj) * (self.lambdas-self.mus+p_lrl)
-            
-            self.tau_lrl = abs(tau_5)
-            self.lrl_traj = np.array([t_lrl, p_lrl, q_lrl])
+            self.tau_lsl = abs((Ls + self.r_traj*(phi_1+phi_2))*tan(self.gamma_traj))
+            self.lsl_traj = np.array([phi_1, Ls, phi_2])
+        
         except:
-            print("ValueError: math domain error")
+            print("Math Domain Error")
 
-    def _RLR(self):
+    def _RSR(self):
         try:
-            p_rlr = acos(0.125 * (6 + 2*cos(self.lambdas - self.mus)- 2*self.d * (sin(self.lambdas) - sin(self.mus))/self.r_traj - self.d**2/self.r_traj**2))
-            t_rlr  = -self.lambdas + p_rlr/2 + atan(-(self.r_traj*cos(self.lambdas)+self.r_traj*cos(self.mus))/(self.d+self.r_traj*sin(self.lambdas)-self.r_traj*sin(self.mus)))
-            q_rlr  = -self.lambdas - t_rlr + p_rlr
-
-            tau_6 = self.r_traj * tan(self.gamma_traj) * (-self.lambdas+self.mus+2*p_rlr)
+            phi_1 = np.arctan2( self.pos_final[1]-self.r_traj*cos(self.pos_final[2])+self.r_traj, self.pos_final[0]-self.r_traj*sin(self.pos_final[2]))
+            phi_1 -= 2*pi
+            phi_1 = abs(phi_1)
             
-            self.tau_rlr = abs(tau_6)
-            self.rlr_traj = np.array([t_rlr, p_rlr, q_rlr])
-        except:
-            print("ValueError: math domain error")
+            Ls = sqrt((self.pos_final[1]-self.r_traj*cos(self.pos_final[2])+self.r_traj)**2 + (self.pos_final[0]-self.r_traj*sin(self.pos_final[2]))**2)
+            phi_2 = -phi_1 + self.pos_final[2]
+            if phi_2 < 0:
+                phi_2 += 2*pi
 
+            self.tau_rsr = abs((abs(phi_1)+abs(phi_2))*self.r_traj + Ls) * tan(self.gamma_traj)    
+            self.rsr_traj = np.array([phi_1, Ls, phi_2])
+        
+        except:
+            print("Math Domain Error")
+        
+        
 
     def _Minimum_Tau(self):
-        self._RSL()
+        self._RSR()
         self._LSR()
         self._RSR()
         self._LSL()
-        self._LRL()
-        self._RLR()
 
-        min_array = np.array([self.tau_rsl,self.tau_rsr,self.tau_lsr,self.tau_lsl,self.tau_rlr,self.tau_lrl])
+        min_array = np.array([self.tau_rsl,self.tau_rsr,self.tau_lsr,self.tau_lsl])
         print(min_array)
         self.tau_min = min(min_array[min_array != 0])
 
-    #def _Calc_Taus():
+    def _Go_Left(self, rotate):
+        x_i = self.pos_x[-1]
+        y_i = self.pos_y[-1]
+        self.heading.append(self.heading[-1]) 
+        dtheta = rotate/100
+        i = 0
+        while i < 100:
+            self.pos_x.append(x_i - self.r_traj*sin(self.heading[-1]) + self.r_traj*sin(self.heading[-1] + dtheta*i))
+            self.pos_y.append(y_i + self.r_traj*cos(self.heading[-1]) - self.r_traj*cos(self.heading[-1] + dtheta*i))
+            i += 1
+        self.heading.append(self.heading[-1]+rotate)
 
+    def _Go_Right(self, rotate):
+        x_i = self.pos_x[-1]
+        y_i = self.pos_y[-1]
+        dtheta = rotate/100 
+        i = 0
+        while i < 100:
+            self.pos_x.append(x_i + self.r_traj*sin(self.heading[-1]) - self.r_traj*sin(self.heading[-1] - dtheta*i))
+            self.pos_y.append(y_i - self.r_traj*cos(self.heading[-1]) + self.r_traj*cos(self.heading[-1] - dtheta*i))
+            i += 1
+        self.heading.append(self.heading[-1]-rotate)
 
+    def _Straight(self, length):
+        self.pos_x.append(self.pos_x[-1]+length*cos(self.heading[-1]))
+        self.pos_y.append(self.pos_y[-1]+length*sin(self.heading[-1]))
+        
+
+    def _Remove_Path(self):
+        self.pos_x = [0]
+        self.pos_y = [0]
+        self.heading = [0]
+        self.alt = [0]
 
 
 '''
