@@ -1,8 +1,10 @@
 import SelfFly
 import math
-from math import pi
+import numpy as np
+from math import pi, sqrt, asin
 from matplotlib import pyplot as plt
 from SelfFly import ParafoilProperties, Quaternion, Dynamics, Variable, Payload
+from Wind_Reference_System import _All_Dubin_Paths
 
 ts = 0.025
 #define parafoil-payload system properties
@@ -14,8 +16,8 @@ parafoil_dynamics = Dynamics(dt=ts, mass=(parafoil.m+mpayload.M))
 parafoil_attitude = Quaternion()
 
 #system two
-parafoil2 = ParafoilProperties(m=635, alpha_0=(-3.5*pi/180), surface=697, a_0=6.41, Cd0=0.005, rigging=10*pi/180)
-parafoil_dynamics_2 = Dynamics(dt=ts, mass=(parafoil2.m+mpayload.M))
+#parafoil2 = ParafoilProperties(m=635, alpha_0=(-3.5*pi/180), surface=697, a_0=6.41, Cd0=0.005, rigging=10*pi/180)
+#parafoil_dynamics_2 = Dynamics(dt=ts, mass=(parafoil2.m+mpayload.M))
 
 #intialize variables to be tracked
 pos_x = Variable("Position [x]")
@@ -30,17 +32,66 @@ vel_x_2 = Variable("Velocity 2 [x]")
 force_x = Variable("Drag [x]")
 force_z = Variable("Lift [z]")
 
-parafoil.Left_TE = 0#5*pi/180
-change_TE  = False
+change_TE_1  = True
+change_TE_2 = True
+change_TE_3 = True
+current_alt = 0
 
 start=True
+calc_dubin=True
 
 while start == True or pos_z.history[-1] > 0:
     
-    if parafoil_dynamics.pos[2] <= 150 and change_TE:
+    if parafoil_dynamics.time > 2.0 and calc_dubin:
+        gamma_traje = abs(np.arctan2(parafoil_dynamics.vel_r[2],sqrt((parafoil_dynamics.vel_r[0])**2+(parafoil_dynamics.vel_r[1])**2)))
+        V_g = sqrt((parafoil_dynamics.vel_r[0])**2+(parafoil_dynamics.vel_r[1])**2+(parafoil_dynamics.vel_r[2])**2)
+        
+        parafoil.Left_TE = pi/2
+        sigma_maxx = np.arcsin(sqrt(V_g * parafoil._Parafoil_Control(V_g)[2]/ 9.81))
         parafoil.Left_TE = 0
-        parafoil.Right_TE = 5*pi/180
-        change_TE = False
+
+        minimum_conditions = _All_Dubin_Paths(pos_init=np.array([0,0,0]), pos_final=np.array([50,50,pi/2]), 
+        altitude=parafoil_dynamics.pos[2],sigma_max=sigma_maxx,v_g=V_g,gamma_g_traj=gamma_traje
+        )
+        minimum_conditions._Minimum_Tau()
+
+        current_alt = parafoil_dynamics.pos[2]
+        TE = parafoil.b* 9.81 *np.sin(minimum_conditions.sigma_max)/(0.71*V_g**2*np.cos(gamma_traje))
+        print(TE)
+        TE = round(TE,3)
+        calc_dubin = False
+    
+    try:
+        if parafoil_dynamics.pos[2] == current_alt and change_TE_1:
+            if minimum_conditions.chosen_traj[0] < 0:
+                parafoil.Left_TE = TE
+                change_TE_1 = False
+            else:
+                parafoil.Right_TE = TE
+                change_TE_1 = False
+    except:
+        xyx =1
+    
+    try:
+        if parafoil_dynamics.pos[2] < current_alt-abs(minimum_conditions.chosen_traj[0]) and parafoil_dynamics.pos[2] > current_alt -abs(minimum_conditions.chosen_traj[0])-abs(minimum_conditions.chosen_traj[1]) and change_TE_3:
+            parafoil.Right_TE = 0
+            parafoil.Left_TE = 0
+            change_TE_3 = False
+    except:
+        xyx =1
+    
+    try:
+        if parafoil_dynamics.pos[2] < current_alt-abs(minimum_conditions.chosen_traj[1])-abs(minimum_conditions.chosen_traj[0]) and change_TE_2:
+            parafoil.Right_TE = 0
+            parafoil.Left_TE = 0
+            if minimum_conditions.chosen_traj[2] < 0:
+                parafoil.Left_TE = TE
+                change_TE_2 = False
+            else:
+                parafoil.Right_TE = TE
+                change_TE_2 = False
+    except:
+        xyx = 1
 
     #update quaternion and gravity matrix
     parafoil_attitude.omega = parafoil._Parafoil_Control(parafoil_dynamics.turn_vel)
@@ -51,16 +102,18 @@ while start == True or pos_z.history[-1] > 0:
     Parafoil_Vector = parafoil._Parafoil_Forces_Moments(parafoil_dynamics.vel)
     Payload_Vector = mpayload._Calc_Forces(parafoil_dynamics.vel)
     Gravity_Vector = parafoil_attitude.body_g * 9.80665 * parafoil_dynamics.mass
+    #print(Parafoil_Vector + Payload_Vector + Gravity_Vector)
     parafoil_dynamics.forces = Parafoil_Vector + Payload_Vector + Gravity_Vector
     
+    #print(parafoil_dynamics.forces)
     #second parafoil
-    Parafoil_Vector_2 = parafoil2._Parafoil_Forces_Moments(parafoil_dynamics_2.vel)
-    Payload_Vector_2 = mpayload._Calc_Forces(parafoil_dynamics_2.vel)
-    Gravity_Vector_2 = parafoil_attitude.body_g * 9.80665 * parafoil_dynamics.mass
-    parafoil_dynamics_2.forces = Parafoil_Vector_2 + Payload_Vector_2 + Gravity_Vector_2
+    #Parafoil_Vector_2 = parafoil2._Parafoil_Forces_Moments(parafoil_dynamics_2.vel)
+    #Payload_Vector_2 = mpayload._Calc_Forces(parafoil_dynamics_2.vel)
+    #Gravity_Vector_2 = parafoil_attitude.body_g * 9.80665 * parafoil_dynamics.mass
+    #parafoil_dynamics_2.forces = Parafoil_Vector_2 + Payload_Vector_2 + Gravity_Vector_2
 
-    parafoil_dynamics_2.update_dynamics(parafoil_attitude._rot_b_v())
-    parafoil_dynamics_2._next_time_step()
+    #parafoil_dynamics_2.update_dynamics(parafoil_attitude._rot_b_v())
+    #parafoil_dynamics_2._next_time_step()
 
     # input them into Dynamics
     parafoil_dynamics.update_dynamics(parafoil_attitude._rot_b_v())
@@ -75,22 +128,26 @@ while start == True or pos_z.history[-1] > 0:
     vel_x.update_history(parafoil_dynamics.vel_r[0])
     vel_y.update_history(parafoil_dynamics.vel_r[1])
     vel_z.update_history(parafoil_dynamics.vel_r[2])
+    #print(parafoil_dynamics.vel_r[0])
 
     force_x.update_history(parafoil.Parafoil_Forces[0])
     force_z.update_history(parafoil.Parafoil_Forces[2])
 
-    vel_x_2.update_history(parafoil_dynamics_2.vel_r[0])
+    #vel_x_2.update_history(parafoil_dynamics_2.vel_r[0])
 
     #update counter
     ts+= 0.025
     start=False
 
-print(ts)
-
 fig = plt.figure()
 plt.plot(vel_x.history)
-plt.plot(vel_x_2.history)
-plt.show()
+#plt.plot(vel_x_2.history)
+plt.gca().set_aspect('equal', adjustable='box')
+
+pos_x.history = pos_x.history[:len(pos_x.history)-10]
+pos_y.history = pos_y.history[:len(pos_y.history)-10]
+pos_z.history = pos_z.history[:len(pos_z.history)-10]
+vel_x.history = vel_x.history[:len(vel_x.history)-10]
 
 pos_x.plot(pos_y.history, None, "x", pos_y.var_name)
 pos_z.plot(pos_x.history, None, "y", pos_x.var_name)
@@ -104,6 +161,7 @@ fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 ax.scatter3D(pos_x.history, pos_y.history, pos_z.history, c=pos_z.history, cmap='Greens');
 #plt.savefig("First")
+
 plt.show()
 
 mm = 1

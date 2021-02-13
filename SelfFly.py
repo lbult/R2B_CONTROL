@@ -22,6 +22,7 @@ class ParafoilProperties():
         self.Parafoil_Forces = np.array([0,0,0])
         self.Parafoil_Moments = np.array([0,0,0])
         self.Cl = 0
+        self.Cd = 0
         
         #geometric properties
         self.AR = b**2/surface
@@ -84,8 +85,8 @@ class ParafoilProperties():
         Cdl = self.line_n*self.R*self.line_d*cos(alpha)**3/self.surface
         Cd = delta_cd + Cdl + self.Cd_0 + (1+self.delta) * self.Cl**2 / (pi * self.AR)
         # Cd += 0.15
-        Cd = delta_cd + self.Cd_0 + (1+self.delta) * self.Cl**2 / (pi * self.AR)
-        return -0.5 * density * Cd * self.surface * sqrt(velocity.dot(velocity)) * velocity
+        self.Cd = delta_cd + self.Cd_0 + (1+self.delta) * self.Cl**2 / (pi * self.AR)
+        return -0.5 * density * self.Cd * self.surface * sqrt(velocity.dot(velocity)) * velocity
     
     def _Calc_Pitch(self, velocity):
         #assume airfoil pitch coefficient negligible for now
@@ -104,11 +105,11 @@ class ParafoilProperties():
     def _Parafoil_Control(self, turn_velocity):
         #trailing edge deflection in radians
         #see if it is possible to cause an increase in drag if both are deflected
-        span = sqrt(self.AR*self.surface)
+        #span = sqrt(self.AR*self.surface)
         if self.Left_TE != 0 and self.Right_TE == 0:
-            return np.array([0,0, 10.0 * turn_velocity * self.Left_TE / span])
+            return np.array([0,0, 0.71 * turn_velocity * self.Left_TE / self.b])
         elif self.Right_TE != 0 and self.Left_TE == 0:
-            return np.array([0,0, -10.0 * turn_velocity * self.Right_TE / span])
+            return np.array([0,0, -0.71 * turn_velocity * self.Right_TE / self.b])
         else:
             return np.array([0,0,0])
 
@@ -243,9 +244,9 @@ class Quaternion():
         #set each individual element
         e0, e1, e2, e3 = self.quaternion
         #update roll, pitch, yaw
-        self.phi = np.arctan2(2 * (e0 * e1 + e2 * e3), e0 ** 2 + e3 ** 2 - e1 ** 2 - e2 ** 2)
-        self.theta = np.arcsin(2 * (e0 * e2 - e1 * e3))
-        self.psi = np.arctan2(2 * (e0 * e3 + e1 * e2), e0 ** 2 + e1 ** 2 - e2 ** 2 - e3 ** 2)
+        self.phi = np.arctan2(2 * (e0 * e1 + e2 * e3), e0 ** 2 + e3 ** 2 - e1 ** 2 - e2 ** 2) % 2*pi
+        self.theta = np.arcsin(2 * (e0 * e2 - e1 * e3)) % 2*pi
+        self.psi = np.arctan2(2 * (e0 * e3 + e1 * e2), e0 ** 2 + e1 ** 2 - e2 ** 2 - e3 ** 2) % 2*pi
         self.body_g = np.array([-sin(self.theta), sin(self.phi)*cos(self.theta), cos(self.phi)*cos(self.theta)])
 
     def _rot_b_v(self):
@@ -288,7 +289,7 @@ For now, add yaw as an angular rate
 '''
 
 class Dynamics:
-    def __init__(self, dt=0.1, I=np.array([[1,0,0],[0,1,0],[0,0,1]]), mass=10, pos=np.array([0,0,300])):
+    def __init__(self, dt=0.025, I=np.array([[1,0,0],[0,1,0],[0,0,1]]), mass=10, pos=np.array([0,0,500])):
         #properties, I is inertia matrix, mass in Newton
         self.I = I
         self.mass = mass
@@ -312,19 +313,19 @@ class Dynamics:
         self.turn_vel = 0
 
     def update_dynamics(self, rot_bv):
-        self.forces = np.dot(rot_bv, self.forces) * np.array([1,1,0]) + self.forces * np.array([0,0,1]) + np.array([0,0,self.mass*9.81])
+        #self.forces = np.dot(np.transpose(rot_bv), self.forces#* np.array([1,1,0]) + self.forces * np.array([0,0,1]) + np.array([0,0,self.mass*9.81])
         #translational acceleration
         self.acc = self.forces * 1/self.mass
         self.vel = self.vel + self.acc * self.dt
-        self.vel_r = np.dot(np.matrix.transpose(rot_bv), self.vel) * np.array([1,1,-1])
+        self.vel_r = np.dot(np.transpose(rot_bv), self.vel) * np.array([1,1,-1])
         self.vel_mag = np.sqrt(self.vel.dot(self.vel))
         #vel_reference = self.vel *  np.array([1,1,-1]) #switch from right hand to attitude positive upwards
         #translation
-        self.pos = self.pos + self.vel_r*self.dt + 0.5 * (self.dt**2) * np.dot(np.matrix.transpose(rot_bv), self.acc)
+        self.pos = self.pos + self.vel_r*self.dt #+ 0.5 * (self.dt**2) * np.dot(np.matrix.transpose(rot_bv), self.acc)
         #attitude
         #self.angular_velocity = np.add(self.angular_velocity, np.dot(self.dt, self.angular_acceleration))
-        self.gamma = atan(self.vel_r[2] / sqrt(self.vel_r[0]**2+self.vel_r[1]**2))
-        self.turn_vel =  self.vel_mag * cos(self.gamma)
+        self.gamma = np.arctan2(self.vel_r[2], sqrt(self.vel_r[0]**2+self.vel_r[1]**2))
+        self.turn_vel =  sqrt(self.vel_r[0]**2+self.vel_r[1]**2) #self.vel_mag * cos(self.gamma)
 
     def _next_time_step(self):
         self.time += self.dt
