@@ -17,13 +17,13 @@ def _Calc_CG(l1, w1, l2, w2):
     return (l1*w1+l2*w2)/(w1+w2)
 
 class ParafoilProperties():
-    def __init__(self, alpha_0=0, a_0=2*pi, b=43.6, surface=5, Cd0=0.01, delta=0.02, rigging=0, m=10, R=70.3, line_n=697, line_d=2.5, thickness=0):
+    def __init__(self, alpha_0=0, a_0=2*pi, b=43.6, surface=5, Cd0=0.01, delta=0.02, rigging=0, m=10, R=70.3, line_n=697, line_d=2.5, thickness=0, ts=0.025):
         #parameters set for thin airfoil theory (see DARE-PRG_R2B Report and Anderson)
         self.Parafoil_Forces = np.array([0,0,0])
         self.Parafoil_Moments = np.array([0,0,0])
         self.Cl = 0
         self.Cd = 0
-        
+
         #geometric properties
         self.AR = b**2/surface
         self.anhedral = b/(4*R)
@@ -52,6 +52,12 @@ class ParafoilProperties():
         #control properties
         self.Right_TE = 0
         self.Left_TE = 0
+
+        # initial condition for angle of attack
+        self.alpa = 2.35
+        self.alpa_prime = 0
+
+        self.ts = ts  # timestep
 
     #def alpha_opt(): calculate optimal angle of attack, defining rigging etc based on that
 
@@ -85,19 +91,50 @@ class ParafoilProperties():
         Cdl = self.line_n*self.R*self.line_d*cos(alpha)**3/self.surface
         Cd = delta_cd + Cdl + self.Cd_0 + (1+self.delta) * self.Cl**2 / (pi * self.AR)
         # Cd += 0.15
-        self.Cd = delta_cd + self.Cd_0 + (1+self.delta) * self.Cl**2 / (pi * self.AR)
-        return -0.5 * density * self.Cd * self.surface * sqrt(velocity.dot(velocity)) * velocity
-    
-    def _Calc_Pitch(self, velocity):
+        Cd = delta_cd + self.Cd_0 + (1+self.delta) * self.Cl**2 / (pi * self.AR)
+        return -0.5 * density * Cd * self.surface * sqrt(velocity.dot(velocity)) * velocity
+
+    def _Calc_Pitch(self, velocity, gamma, D_s, y, y_p, m_s):
+        """
+        TODO: add the airfoil pitching moment term in this pitching EOM, and consider how controls can be integrated
+        :param velocity: velocity, nparray(3)
+        :param gamma: gamma, angle between velocity vector and ground, float
+        :param D_s: Drag force of payload, nparray(3)
+        :param y: initial angle of attack, float
+        :param y_p: initial rate of change of angle of attack, float
+        :param m_s: mass of payload, float
+        :return: y_1: change in angle of attack after one time step, float
+                 y_prime: change in rate of change of angle of attack after one time step, float
+        """
         #assume airfoil pitch coefficient negligible for now
+        # print(y_p)
+        # print(velocity, gamma, D_s, y, y_p, m_s, "\n")
+        vel = sqrt(velocity.dot(velocity))
+        D_s = sqrt(D_s.dot(D_s))
+        L_l = -density*vel*vel*self.line_n*self.line_d*self.R*np.cos(y+gamma)**2*np.sin(y+gamma)/2
+        D_l = density*vel*vel*self.line_n*self.line_d*self.R*np.cos(y+gamma)**3/2
+        y_prime_prime = (self.R * (D_s * np.cos(y + self.rigging)) + self.R * (
+                L_l * np.sin(y + self.rigging) - D_l * np.cos(y + self.rigging)) / 2 - m_s * 9.80665 * self.R * np.sin(
+                y - gamma + self.rigging)) / (m_s * self.R * self.R)
+        y_prime = y_prime_prime * self.ts
+        y_1 = y_p * self.ts
+        # print(y_1)
+        return y_1, y_prime
 
+    def _Parafoil_Forces_Moments(self, vel, D_s, m_s):
+        """
 
-        return
-
-    def _Parafoil_Forces_Moments(self, vel):
-        alpa = np.arctan2(vel[2], vel[0]) #+pitch redefine this to wrt airspeed
-        self.Parafoil_Forces = self._Calc_Lift(alpa, vel) + self._Calc_Drag(alpa, vel)
-        return self._Calc_Lift(alpa, vel) + self._Calc_Drag(alpa, vel)
+        :param vel: velocity vector of parafoil, nparray(3)
+        :param D_s: Drag force vector of payload, nparray(3)
+        :param m_s: mass of payload, float
+        :return: Total aerodynamic force vector acting on parafoil, nparray(3)
+        """
+        gamma = np.arctan2(vel[2], vel[0])
+        a_1, a_p_1 = self._Calc_Pitch(vel, gamma, D_s, self.alpa, self.alpa_prime, m_s)
+        self.alpa += a_1
+        self.alpa_prime += a_p_1
+        self.Parafoil_Forces = self._Calc_Lift(self.alpa, vel) + self._Calc_Drag(self.alpa, vel)
+        return self._Calc_Lift(self.alpa, vel) + self._Calc_Drag(self.alpa, vel)
 
         #Cm_pitch = self._Calc_Pitch(0)
         #self.Parafoil_Moments = np.array([0,Cm_pitch,0])
@@ -113,36 +150,36 @@ class ParafoilProperties():
         else:
             return np.array([0,0,0])
 
-    def _Apparent_Masses(self):
-        epsilon_0 = 2*self.anhedral
-        flat_b = 2*np.sin(epsilon_0)*self.R
-        k = np.array([0.848, 1, self.AR/(1+self.AR)]) # array: [kA, kB, kC]
-        k_star = np.array([0.84*self.AR/(1+self.AR), 1.161*self.AR/(1+self.AR), 0.848]) # array: [kA*, kB*, kC*]
-
-        app_m_fl = np.array([density*pi*(self.t**2)*flat_b/4, density*pi*(self.t**2)*self.c/4, density*pi*(self.c**2)*flat_b/4])\
-                  *k
-        # array: [app_mass_x_fl, app_mass_y_fl, app_mass_z_fl]
-
-        app_MMOI_fl = np.array([density*pi*(self.c**2)*(flat_b**3)/48, density*4*flat_b*(self.c**4)/(48*pi), density*pi*(self.t**2)*(flat_b**3)/48])\
-                  *k_star
-        # array: [app_MMOIx_fl, app_MMOIy_fl, app_MMOIz_fl]
-
-        a_bar = (self.R-self.R*np.cos(epsilon_0))/(2*self.R*np.sin(epsilon_0))
-        a1 = self.R*np.sin(epsilon_0)/epsilon_0
-        a2 = a1*app_m_fl[1]/(app_m_fl[1]+app_MMOI_fl[0]/(self.R**2))
-        a12 = a1 - a2
-
-        app_m_curv = np.array([app_m_fl[0]*(1+8*(a_bar**2)/3),
-                               ((self.R**2)*app_m_fl[1]+app_MMOI_fl[0])/(a1**2),
-                               app_m_fl[2]*np.sqrt(1+2*(a_bar**2)(1-(self.t/self.c)**2))])
-        # array: [app_mx_curv, app_my_curv, app_mz_curv]
-
-
-        app_MMOI_curv = np.array([((a12*self.R)**2*app_m_fl[1]+app_MMOI_fl[0]*a2**2)/(a1**2),
-                                 app_MMOI_fl[1](1+pi*(1+self.AR)*self.AR*(a_bar*(self.t/self.c))/6),
-                                  (1+8*a_bar**2)*app_MMOI_fl[2]])
-        # array: [app_MMOIx_curv, app_MMOIy_curv, app_MMOIz_curv]
-        return
+    # def _Apparent_Masses(self):
+    #     epsilon_0 = 2*self.anhedral
+    #     flat_b = 2*np.sin(epsilon_0)*self.R
+    #     k = np.array([0.848, 1, self.AR/(1+self.AR)]) # array: [kA, kB, kC]
+    #     k_star = np.array([0.84*self.AR/(1+self.AR), 1.161*self.AR/(1+self.AR), 0.848]) # array: [kA*, kB*, kC*]
+    #
+    #     app_m_fl = np.array([density*pi*(self.t**2)*flat_b/4, density*pi*(self.t**2)*self.c/4, density*pi*(self.c**2)*flat_b/4])\
+    #               *k
+    #     # array: [app_mass_x_fl, app_mass_y_fl, app_mass_z_fl]
+    #
+    #     app_MMOI_fl = np.array([density*pi*(self.c**2)*(flat_b**3)/48, density*4*flat_b*(self.c**4)/(48*pi), density*pi*(self.t**2)*(flat_b**3)/48])\
+    #               *k_star
+    #     # array: [app_MMOIx_fl, app_MMOIy_fl, app_MMOIz_fl]
+    #
+    #     a_bar = (self.R-self.R*np.cos(epsilon_0))/(2*self.R*np.sin(epsilon_0))
+    #     a1 = self.R*np.sin(epsilon_0)/epsilon_0
+    #     a2 = a1*app_m_fl[1]/(app_m_fl[1]+app_MMOI_fl[0]/(self.R**2))
+    #     a12 = a1 - a2
+    #
+    #     app_m_curv = np.array([app_m_fl[0]*(1+8*(a_bar**2)/3),
+    #                            ((self.R**2)*app_m_fl[1]+app_MMOI_fl[0])/(a1**2),
+    #                            app_m_fl[2]*np.sqrt(1+2*(a_bar**2)(1-(self.t/self.c)**2))])
+    #     # array: [app_mx_curv, app_my_curv, app_mz_curv]
+    #
+    #
+    #     app_MMOI_curv = np.array([((a12*self.R)**2*app_m_fl[1]+app_MMOI_fl[0]*a2**2)/(a1**2),
+    #                              app_MMOI_fl[1](1+pi*(1+self.AR)*self.AR*(a_bar*(self.t/self.c))/6),
+    #                               (1+8*a_bar**2)*app_MMOI_fl[2]])
+    #     # array: [app_MMOIx_curv, app_MMOIy_curv, app_MMOIz_curv]
+    #     return
 
 
 class Payload():
