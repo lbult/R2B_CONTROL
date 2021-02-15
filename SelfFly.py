@@ -168,10 +168,12 @@ class Variable():
     def update_history(self, value):
         self.history.append(value)
 
-    def plot(self, subplot_one, subplot_two, x_or_y, ylabel):
+    def plot(self, subplot_one, subplot_two, x_or_y, ylabel, normalize):
         #input lists of data
         if subplot_one == None:
             fig = plt.figure()
+            if normalize:
+                plt.gca().set_aspect('equal', adjustable='box')
             plt.plot(self.history)
             plt.xlabel("Time")
             plt.ylabel(self.var_name)
@@ -180,6 +182,8 @@ class Variable():
         elif x_or_y == "x":
             
             fig = plt.figure()
+            if normalize:
+                plt.gca().set_aspect('equal', adjustable='box')
             ax1 = fig.add_subplot(111)
             ax1.plot(self.history, subplot_one)
             plt.xlabel(self.var_name)
@@ -194,6 +198,8 @@ class Variable():
         elif x_or_y == "y":
             
             fig = plt.figure()
+            if normalize:
+                plt.gca().set_aspect('equal', adjustable='box')
             ax1 = fig.add_subplot(111)
             ax1.plot(subplot_one, self.history)
             plt.xlabel(self.var_name)
@@ -201,6 +207,8 @@ class Variable():
 
             if subplot_two != None:
                 ax2 = fig.add_subplot(112)
+                if normalize:
+                    plt.gca().set_aspect('equal', adjustable='box')
                 ax2.plot(subplot_two, self.history)
 
             plt.show()
@@ -244,9 +252,10 @@ class Quaternion():
         #set each individual element
         e0, e1, e2, e3 = self.quaternion
         #update roll, pitch, yaw
-        self.phi = np.arctan2(2 * (e0 * e1 + e2 * e3), e0 ** 2 + e3 ** 2 - e1 ** 2 - e2 ** 2) % 2*pi
-        self.theta = np.arcsin(2 * (e0 * e2 - e1 * e3)) % 2*pi
-        self.psi = np.arctan2(2 * (e0 * e3 + e1 * e2), e0 ** 2 + e1 ** 2 - e2 ** 2 - e3 ** 2) % 2*pi
+        self.phi = np.arctan2(2 * (e0 * e1 + e2 * e3), e0 ** 2 + e3 ** 2 - e1 ** 2 - e2 ** 2)
+        self.theta = np.arcsin(2 * (e0 * e2 - e1 * e3))
+        self.psi = np.arctan2(2 * (e0 * e3 + e1 * e2), e0 ** 2 + e1 ** 2 - e2 ** 2 - e3 ** 2)
+        print(self.psi)
         self.body_g = np.array([-sin(self.theta), sin(self.phi)*cos(self.theta), cos(self.phi)*cos(self.theta)])
 
     def _rot_b_v(self):

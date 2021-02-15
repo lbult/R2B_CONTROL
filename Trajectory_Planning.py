@@ -4,9 +4,9 @@ from math import tan, cos, pi, sin, atan, asin, acos,sqrt
 import numpy as np
 
 #boundary conditions
-init_height = 300
+init_height = 500
 initial_conditions = np.array([0,0,0])
-final_conditions = np.array([1,40,3*pi/2])
+final_conditions = np.array([100,100,pi/2])
 tau_f = init_height
 
 #necessary system parameters
@@ -21,6 +21,10 @@ minimum_conditions._Minimum_Tau()
 
 plt.plot(minimum_conditions.pos_xs, minimum_conditions.pos_ys, 'b')
 plt.plot(minimum_conditions.pos_x, minimum_conditions.pos_y, 'r')
+
+#print(minimum_conditions.pos_x)
+#print(minimum_conditions.heading)
+print(minimum_conditions.alt)
 
 plt.gca().set_aspect('equal', adjustable='box')
 

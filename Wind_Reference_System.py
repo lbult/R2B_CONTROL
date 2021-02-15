@@ -8,7 +8,7 @@ class _All_Dubin_Paths():
     def __init__(self, pos_init=0, pos_final=0, gamma_g_traj=0, altitude=0, v_g=0, sigma_max=0):
         self.pos_init = pos_init
         self.pos_final = pos_final
-        self.pos_final_o = np.array([self.pos_final[1], -self.pos_final[0], self.pos_final[2] - pi/2])
+        self.pos_final_o = np.array([-self.pos_final[1], self.pos_final[0], self.pos_final[2] - pi/2])
 
 
         self.gamma_g_traj = gamma_g_traj
@@ -47,14 +47,14 @@ class _All_Dubin_Paths():
         self.pos_xs = [0]
         self.pos_ys = [0]
         self.headings = [0]
-        self.alts = [0]
+        self.alts = [altitude]
 
         # minimum control trajectory
         # trajectory as x, y, heading, altitude lists
         self.pos_x = [0]
         self.pos_y = [0]
         self.heading = [0]
-        self.alt = [0]
+        self.alt = [altitude]
 
     def _RSL(self):
         try:
@@ -67,7 +67,7 @@ class _All_Dubin_Paths():
             if phi_2 < 0:
                 phi_2 += 2*pi
             
-            self.tau_rsl = abs(((abs(phi_1)+abs(phi_2))*self.r_traj + Ls) * tan(self.gamma_traj))    
+            self.tau_rsl = abs((abs(phi_1)+abs(phi_2))*self.r_traj*tan(self.gamma_traj)) + abs( Ls * tan(self.gamma_g_traj))    
             self.rsl_traj = np.array([phi_1, Ls, phi_2])
         except:
             print("Math Domain Error")
@@ -84,7 +84,7 @@ class _All_Dubin_Paths():
             if phi_2 < 0:
                 phi_2 += 2*pi
 
-            self.tau_lsr = abs((Ls + self.r_traj*(phi_1+phi_2))*tan(self.gamma_traj))
+            self.tau_lsr = abs((abs(phi_1)+abs(phi_2))*self.r_traj*tan(self.gamma_traj)) + abs( Ls * tan(self.gamma_g_traj))    
             self.lsr_traj = np.array([phi_1, Ls, phi_2])
 
         except:
@@ -100,7 +100,7 @@ class _All_Dubin_Paths():
                 phi_2 += 2*pi
             Ls = sqrt((self.pos_final[1]+self.r_traj*cos(self.pos_final[2])-self.r_traj)**2 + (self.pos_final[0]-self.r_traj*sin(self.pos_final[2]))**2)
 
-            self.tau_lsl = abs((Ls + self.r_traj*(phi_1+phi_2))*tan(self.gamma_traj))
+            self.tau_lsl = abs((abs(phi_1)+abs(phi_2))*self.r_traj*tan(self.gamma_traj)) + abs( Ls * tan(self.gamma_g_traj))    
             self.lsl_traj = np.array([phi_1, Ls, phi_2])
         
         except:
@@ -117,7 +117,7 @@ class _All_Dubin_Paths():
             if phi_2 < 0:
                 phi_2 += 2*pi
 
-            self.tau_rsr = abs(((abs(phi_1)+abs(phi_2))*self.r_traj + Ls) * tan(self.gamma_traj))    
+            self.tau_rsr = abs((abs(phi_1)+abs(phi_2))*self.r_traj*tan(self.gamma_traj)) + abs( Ls * tan(self.gamma_g_traj))      
             self.rsr_traj = np.array([phi_1, Ls, phi_2])
         
         except:
@@ -139,9 +139,10 @@ class _All_Dubin_Paths():
         
         self.tau_min = min(min_arrays)
         tau_place = min_array.index(self.tau_min)
-        tau_full = abs(2*pi*self.r_traj/(self.v_min*cos(self.gamma_traj) * self.v_min * sin(self.gamma_traj)))
+        tau_full = abs(2*pi*self.r_traj*tan(self.gamma_traj))
         
         self.eta = (self.altitude - self.tau_min)/tau_full
+        print(self.eta)
 
         iteration_1 = True
         not_converged=True
@@ -234,29 +235,40 @@ class _All_Dubin_Paths():
     def _Go_Left(self, rotate):
         x_i = self.pos_x[-1]
         y_i = self.pos_y[-1]
-        self.heading.append(self.heading[-1]) 
+        this_heading = self.heading[-1]
         dtheta = rotate/100
         i = 0
         while i < 100:
-            self.pos_x.append(x_i - self.r_traj*sin(self.heading[-1]) + self.r_traj*sin(self.heading[-1] + dtheta*i))
-            self.pos_y.append(y_i + self.r_traj*cos(self.heading[-1]) - self.r_traj*cos(self.heading[-1] + dtheta*i))
+            self.pos_x.append(x_i - self.r_traj*sin(this_heading) + self.r_traj*sin(this_heading + dtheta*i))
+            self.pos_y.append(y_i + self.r_traj*cos(this_heading) - self.r_traj*cos(this_heading + dtheta*i))
+            self.heading.append(self.heading[-1]+dtheta)
+            self.alt.append(self.alt[-1]-abs(dtheta*tan(self.gamma_traj)))
             i += 1
-        self.heading.append(self.heading[-1]+rotate)
 
     def _Go_Right(self, rotate):
         x_i = self.pos_x[-1]
         y_i = self.pos_y[-1]
         dtheta = rotate/100 
+        this_heading = self.heading[-1]
         i = 0
         while i < 100:
-            self.pos_x.append(x_i + self.r_traj*sin(self.heading[-1]) - self.r_traj*sin(self.heading[-1] - dtheta*i))
-            self.pos_y.append(y_i - self.r_traj*cos(self.heading[-1]) + self.r_traj*cos(self.heading[-1] - dtheta*i))
+            self.pos_x.append(x_i + self.r_traj*sin(this_heading) - self.r_traj*sin(this_heading - dtheta*i))
+            self.pos_y.append(y_i - self.r_traj*cos(this_heading) + self.r_traj*cos(this_heading - dtheta*i))
+            self.heading.append(self.heading[-1]-dtheta)
+            self.alt.append(self.alt[-1]-abs(dtheta*tan(self.gamma_traj)))
             i += 1
-        self.heading.append(self.heading[-1]-rotate)
 
     def _Straight(self, length):
-        self.pos_x.append(self.pos_x[-1]+length*cos(self.heading[-1]))
-        self.pos_y.append(self.pos_y[-1]+length*sin(self.heading[-1]))
+        #self.pos_x.append(self.pos_x[-1]+length*cos(self.heading[-1]))
+        #self.pos_y.append(self.pos_y[-1]+length*sin(self.heading[-1]))
+        dlength = length/100
+        i = 0
+        while i < 100:
+            self.pos_x.append(self.pos_x[-1]+dlength*cos(self.heading[-1]))
+            self.pos_y.append(self.pos_y[-1]+dlength*sin(self.heading[-1]))
+            self.heading.append(self.heading[-1])
+            self.alt.append(self.alt[-1]-abs(dlength*tan(self.gamma_g_traj)))
+            i += 1
 
     def _Remove_Path(self):
         self.pos_x = [0]
