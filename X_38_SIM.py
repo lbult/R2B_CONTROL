@@ -38,9 +38,11 @@ change_TE_2 = True
 change_TE_3 = True
 current_alt = 0
 
+calc_dubin = True
+
 start=True
 
-while start == True or pos_z.history[-1] > 0:
+while start == True or pos_z.history[-1] > -400:
     
     if parafoil_dynamics.time > 2.0 and calc_dubin:
         gamma_traje = abs(np.arctan2(parafoil_dynamics.vel_r[2],sqrt((parafoil_dynamics.vel_r[0])**2+(parafoil_dynamics.vel_r[1])**2)))
@@ -99,7 +101,6 @@ while start == True or pos_z.history[-1] > 0:
     parafoil_attitude._to_euler()
 
     #update parafoil forces and moments
-    Parafoil_Vector = parafoil._Parafoil_Forces_Moments(parafoil_dynamics.vel)
     Payload_Vector = mpayload._Calc_Forces(parafoil_dynamics.vel)
     Parafoil_Vector = parafoil._Parafoil_Forces_Moments(parafoil_dynamics.vel, Payload_Vector, mpayload.M)
     Gravity_Vector = parafoil_attitude.body_g * 9.80665 * parafoil_dynamics.mass
@@ -153,6 +154,7 @@ pos_y.history = pos_y.history[:len(pos_y.history)-10]
 pos_z.history = pos_z.history[:len(pos_z.history)-10]
 vel_x.history = vel_x.history[:len(vel_x.history)-10]
 
+alpa.plot(None, None, "y", alpa.var_name)
 pos_x.plot(pos_y.history, None, "x", pos_y.var_name)
 pos_z.plot(pos_x.history, None, "y", pos_x.var_name)
 vel_x.plot(None, None, "y", vel_x.var_name)
