@@ -44,6 +44,7 @@ class ParafoilProperties():
         self.Cd_0 = Cd0 #find for airfoil shape
         self.delta = delta #estimate using 5.20 in Anderson, function of taper ratio
         self.app_MMOI_curv = np.array([0,0,0])
+        self.gamma = 0
 
         #line properties
         self.R = R # mean lin length
@@ -162,8 +163,8 @@ class ParafoilProperties():
         :param m_s: mass of payload, float
         :return: Total aerodynamic force vector acting on parafoil, nparray(3)
         """
-        gamma = np.arctan2(vel[2], vel[0])
-        a_1, a_p_1 = self._Calc_Pitch(vel, gamma, D_s, self.alpa, self.alpa_prime, m_s)
+        self.gamma = -abs(np.arctan2(vel[2], vel[0]))
+        a_1, a_p_1 = self._Calc_Pitch(vel, self.gamma, D_s, self.alpa, self.alpa_prime, m_s)
         self.alpa += a_1
         self.alpa_prime += a_p_1
         self.Parafoil_Forces = self._Calc_Lift(self.alpa, vel) + self._Calc_Drag(self.alpa, vel)

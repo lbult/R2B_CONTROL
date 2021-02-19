@@ -98,11 +98,10 @@ while start == True or pos_z.history[-1] > 0:
 
     #update quaternion and gravity matrix
     parafoil_attitude.omega = parafoil._Parafoil_Control(parafoil_dynamics.turn_vel)
+    parafoil_attitude.theta = parafoil.gamma + parafoil.rigging + parafoil.alpa
+    parafoil_attitude._to_quaternion()
     parafoil_attitude._update_quaternion()
     parafoil_attitude._to_euler()
-    parafoil_attitude.theta = -15.9*pi/180#np.arctan2(parafoil_dynamics.vel_r[2], sqrt(parafoil_dynamics.vel_r[0]**2+parafoil_dynamics.vel_r[1]**2))
-    #print(parafoil_attitude.theta)
-    parafoil_attitude._to_quaternion()
 
     #update parafoil forces and moments
     Payload_Vector = mpayload._Calc_Forces(parafoil_dynamics.vel)
@@ -140,7 +139,7 @@ while start == True or pos_z.history[-1] > 0:
     #update force vars
     force_x.update_history(parafoil.Parafoil_Forces[0])
     force_z.update_history(parafoil.Parafoil_Forces[2])
-
+    print(parafoil.gamma)
     #update counter
     ts+= 0.05
     start=False
