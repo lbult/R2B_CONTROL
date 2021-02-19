@@ -8,6 +8,10 @@ from mpl_toolkits import mplot3d
 
 density = 1.225 #kg/m^3
 
+def find_Cm(x):
+    f = -297/68000 * x**5 + 1/1024*x**4 - 13/1536*x**3 + 179/6400*x**2 - 1303/24000*x
+    return f
+
 def _Skew_Symmetric_Operator(vector_to_skew):
     return np.dot([[0,-vector_to_skew[2],vector_to_skew[1]],
                 [vector_to_skew[2],0,-vector_to_skew[0]],
@@ -54,7 +58,7 @@ class ParafoilProperties():
         self.Left_TE = 0
 
         # initial condition for angle of attack
-        self.alpa = 2.35
+        self.alpa = 0
         self.alpa_prime = 0
 
         self.ts = ts  # timestep
@@ -109,16 +113,17 @@ class ParafoilProperties():
         #assume airfoil pitch coefficient negligible for now
         # print(y_p)
         # print(velocity, gamma, D_s, y, y_p, m_s, "\n")
-        vel = sqrt(velocity.dot(velocity))
-        D_s = sqrt(D_s.dot(D_s))
+        vel = sqrt(velocity[0]**2+velocity[2]**2)
+        D_s = sqrt(D_s[0]**2+D_s[2]**2)
         L_l = -density*vel*vel*self.line_n*self.line_d*self.R*np.cos(y+gamma)**2*np.sin(y+gamma)/2
         D_l = density*vel*vel*self.line_n*self.line_d*self.R*np.cos(y+gamma)**3/2
-        y_prime_prime = (self.R * (D_s * np.cos(y + self.rigging)) + self.R * (
+        y_prime_prime =  (find_Cm(y)*0.5*density*vel**2*self.surface + self.R * (D_s * np.cos(y + self.rigging)) + self.R * (
                 L_l * np.sin(y + self.rigging) - D_l * np.cos(y + self.rigging)) / 2 - m_s * 9.80665 * self.R * np.sin(
                 y - gamma + self.rigging)) / (m_s * self.R * self.R)
         y_prime = y_prime_prime * self.ts
         y_1 = y_p * self.ts
         # print(y_1)
+        
         return y_1, y_prime
 
     def _Parafoil_Forces_Moments(self, vel, D_s, m_s):
@@ -129,10 +134,11 @@ class ParafoilProperties():
         :param m_s: mass of payload, float
         :return: Total aerodynamic force vector acting on parafoil, nparray(3)
         """
-        gamma = np.arctan2(vel[2], vel[0])
-        a_1, a_p_1 = self._Calc_Pitch(vel, gamma, D_s, self.alpa, self.alpa_prime, m_s)
-        self.alpa += a_1
-        self.alpa_prime += a_p_1
+        #self.alpa = np.arctan2(vel[2], vel[0])
+        #a_1, a_p_1 = self._Calc_Pitch(vel, gamma, D_s, self.alpa, self.alpa_prime, m_s)
+        #self.alpa += a_1
+        #self.alpa_prime += a_p_1
+        self.alpa = self.rigging
         self.Parafoil_Forces = self._Calc_Lift(self.alpa, vel) + self._Calc_Drag(self.alpa, vel)
         return self._Calc_Lift(self.alpa, vel) + self._Calc_Drag(self.alpa, vel)
 
@@ -183,7 +189,7 @@ class ParafoilProperties():
 
 
 class Payload():
-    def __init__(self, M=10, shape="", payload_cd=1, payload_surface=0.01):
+    def __init__(self, M=10, shape="", payload_cd=1, payload_surface=1):
         self.M=M
         self.shape = shape
         self.payload_cd = payload_cd
@@ -267,13 +273,13 @@ class Quaternion():
         self.omega = omega
         self.body_g = np.array([0,0,0])
 
-    def _to_quaternion(self, euler):
+    def _to_quaternion(self):
         """
         Set value of attitude quaternion from euler angles.
 
         :param euler: ([float]) euler angles roll, pitch, yaw.
         """
-        self.phi, self.theta, self.psi = euler
+        #self.phi, self.theta, self.psi = euler
         e0 = np.cos(self.psi / 2) * np.cos(self.theta / 2) * np.cos(self.phi / 2) + np.sin(self.psi / 2) * np.sin(self.theta / 2) * np.sin(
             self.phi / 2)
         e1 = np.cos(self.psi / 2) * np.cos(self.theta / 2) * np.sin(self.phi / 2) - np.sin(self.psi / 2) * np.sin(self.theta / 2) * np.cos(
@@ -292,7 +298,7 @@ class Quaternion():
         self.phi = np.arctan2(2 * (e0 * e1 + e2 * e3), e0 ** 2 + e3 ** 2 - e1 ** 2 - e2 ** 2)
         self.theta = np.arcsin(2 * (e0 * e2 - e1 * e3))
         self.psi = np.arctan2(2 * (e0 * e3 + e1 * e2), e0 ** 2 + e1 ** 2 - e2 ** 2 - e3 ** 2)
-        print(self.psi)
+        #print(self.psi)
         self.body_g = np.array([-sin(self.theta), sin(self.phi)*cos(self.theta), cos(self.phi)*cos(self.theta)])
 
     def _rot_b_v(self):
@@ -335,14 +341,14 @@ For now, add yaw as an angular rate
 '''
 
 class Dynamics:
-    def __init__(self, dt=0.025, I=np.array([[1,0,0],[0,1,0],[0,0,1]]), mass=10, pos=np.array([0,0,500])):
+    def __init__(self, dt=0.025, I=np.array([[1,0,0],[0,1,0],[0,0,1]]), mass=10, pos=np.array([0,0,100])):
         #properties, I is inertia matrix, mass in Newton
         self.I = I
         self.mass = mass
         #translational
         self.pos = pos #reference system
         self.vel_r = np.array([0,0,0]) # reference system
-        self.vel = np.array([0,0,0]) #body system
+        self.vel = np.array([-30,0,11]) #body system
         self.acc = np.array([0,0,0]) #body system
         #attitude, radians
         self.angular_velocity = np.array([[0,0,0]])
