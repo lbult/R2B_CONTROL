@@ -55,7 +55,7 @@ class ParafoilProperties():
         self.Left_TE = 0
 
         # initial condition for angle of attack
-        self.alpa = 0.1
+        self.alpa = 2.35
         self.alpa_prime = 0
 
         self.ts = ts  # timestep
@@ -71,6 +71,7 @@ class ParafoilProperties():
         self.cg_height_wrtpayload = (self.Parafoil_cloth_mass*self.R )/(self.Parafoil_cloth_mass+ payload_m)
         return self.cg_height_wrtpayload
 
+    
     def _Calc_Lift(self, alpha, velocity):
         """
         Function for calculating the lift force of the parafoil
@@ -80,7 +81,7 @@ class ParafoilProperties():
         :return: lift force of the parafoil, normal to chord (Fn), vertical in vehicle axis system, nparray(3)
         """
         #alpha in radians
-        k1 = (3.33-1.33*self.AR) # for 1 < alpha < 2.5
+        k1 = (3.33-1.33*self.AR) #for 1 < alpha < 2.5
         delta_cl = k1*(sin(alpha-self.alpha_0)**2)*cos(alpha-self.alpha_0)
         self.Cl = self.a * (alpha+self.rigging-self.alpha_0) * cos(self.anhedral)**2 + delta_cl
         #calculate total force
@@ -216,7 +217,7 @@ class ParafoilProperties():
 
 
 class Payload():
-    def __init__(self, M=10, shape="", payload_cd=1, payload_surface=0.01):
+    def __init__(self, M=10, shape="", payload_cd=1, payload_surface=1):
         self.M=M
         self.shape = shape
         self.payload_cd = payload_cd
@@ -238,10 +239,12 @@ class Variable():
     def update_history(self, value):
         self.history.append(value)
 
-    def plot(self, subplot_one, subplot_two, x_or_y, ylabel):
+    def plot(self, subplot_one, subplot_two, x_or_y, ylabel, normalize):
         #input lists of data
         if subplot_one == None:
             fig = plt.figure()
+            if normalize:
+                plt.gca().set_aspect('equal', adjustable='box')
             plt.plot(self.history)
             plt.xlabel("Time")
             plt.ylabel(self.var_name)
@@ -250,6 +253,8 @@ class Variable():
         elif x_or_y == "x":
             
             fig = plt.figure()
+            if normalize:
+                plt.gca().set_aspect('equal', adjustable='box')
             ax1 = fig.add_subplot(111)
             ax1.plot(self.history, subplot_one)
             plt.xlabel(self.var_name)
@@ -264,6 +269,8 @@ class Variable():
         elif x_or_y == "y":
             
             fig = plt.figure()
+            if normalize:
+                plt.gca().set_aspect('equal', adjustable='box')
             ax1 = fig.add_subplot(111)
             ax1.plot(subplot_one, self.history)
             plt.xlabel(self.var_name)
@@ -271,6 +278,8 @@ class Variable():
 
             if subplot_two != None:
                 ax2 = fig.add_subplot(112)
+                if normalize:
+                    plt.gca().set_aspect('equal', adjustable='box')
                 ax2.plot(subplot_two, self.history)
 
             plt.show()
@@ -292,13 +301,13 @@ class Quaternion():
         self.omega = omega
         self.body_g = np.array([0,0,0])
 
-    def _to_quaternion(self, euler):
+    def _to_quaternion(self):
         """
         Set value of attitude quaternion from euler angles.
 
         :param euler: ([float]) euler angles roll, pitch, yaw.
         """
-        self.phi, self.theta, self.psi = euler
+        #self.phi, self.theta, self.psi = euler
         e0 = np.cos(self.psi / 2) * np.cos(self.theta / 2) * np.cos(self.phi / 2) + np.sin(self.psi / 2) * np.sin(self.theta / 2) * np.sin(
             self.phi / 2)
         e1 = np.cos(self.psi / 2) * np.cos(self.theta / 2) * np.sin(self.phi / 2) - np.sin(self.psi / 2) * np.sin(self.theta / 2) * np.cos(
@@ -314,9 +323,10 @@ class Quaternion():
         #set each individual element
         e0, e1, e2, e3 = self.quaternion
         #update roll, pitch, yaw
-        self.phi = np.arctan2(2 * (e0 * e1 + e2 * e3), e0 ** 2 + e3 ** 2 - e1 ** 2 - e2 ** 2) % 2*pi
-        self.theta = np.arcsin(2 * (e0 * e2 - e1 * e3)) % 2*pi
-        self.psi = np.arctan2(2 * (e0 * e3 + e1 * e2), e0 ** 2 + e1 ** 2 - e2 ** 2 - e3 ** 2) % 2*pi
+        self.phi = np.arctan2(2 * (e0 * e1 + e2 * e3), e0 ** 2 + e3 ** 2 - e1 ** 2 - e2 ** 2)
+        self.theta = np.arcsin(2 * (e0 * e2 - e1 * e3))
+        self.psi = np.arctan2(2 * (e0 * e3 + e1 * e2), e0 ** 2 + e1 ** 2 - e2 ** 2 - e3 ** 2)
+        #print(self.psi)
         self.body_g = np.array([-sin(self.theta), sin(self.phi)*cos(self.theta), cos(self.phi)*cos(self.theta)])
 
     def _rot_b_v(self):
@@ -359,14 +369,14 @@ For now, add yaw as an angular rate
 '''
 
 class Dynamics:
-    def __init__(self, dt=0.025, I=np.array([[1,0,0],[0,1,0],[0,0,1]]), mass=10, pos=np.array([0,0,500])):
+    def __init__(self, dt=0.025, I=np.array([[1,0,0],[0,1,0],[0,0,1]]), mass=10, pos=np.array([0,0,100])):
         #properties, I is inertia matrix, mass in Newton
         self.I = I
         self.mass = mass
         #translational
         self.pos = pos #reference system
         self.vel_r = np.array([0,0,0]) # reference system
-        self.vel = np.array([0,0,0]) #body system
+        self.vel = np.array([-30,0,11]) #body system
         self.acc = np.array([0,0,0]) #body system
         #attitude, radians
         self.angular_velocity = np.array([[0,0,0]])
