@@ -56,7 +56,7 @@ class ParafoilProperties():
         self.Left_TE = 0
 
         # initial condition for angle of attack
-        self.alpa = 2.35
+        self.alpa = 0
         self.alpa_prime = 0
 
         self.ts = ts  # timestep
@@ -86,7 +86,8 @@ class ParafoilProperties():
         delta_cl = k1*(sin(alpha-self.alpha_0)**2)*cos(alpha-self.alpha_0)
         self.Cl = self.a * (alpha+self.rigging-self.alpha_0) * cos(self.anhedral)**2 + delta_cl
         #calculate total force
-        return 0.5 * density * self.Cl * self.surface * np.array([-velocity[2], 0, velocity[0]]) * sqrt(velocity[2]**2 + velocity[0]**2)
+        return 0.5 * density * self.Cl * self.surface * ((velocity[2])**2 + (velocity[0])**2) * np.array([0,0,-1])
+        #return 0.5 * density * self.Cl * self.surface * np.array([-velocity[2], 0, velocity[0]]) * sqrt(velocity[2]**2 + velocity[0]**2)
  
     def _Calc_Drag(self, alpha, velocity):
         """
@@ -100,10 +101,12 @@ class ParafoilProperties():
         k1 = (3.33-1.33*self.AR) #for 1 < alpha < 2.5
         delta_cd = k1*sin(alpha+self.rigging-self.alpha_0)**3
         Cdl = self.line_n*self.R*self.line_d*cos(alpha)**3/self.surface
-        Cd = delta_cd + Cdl + self.Cd_0 + (1+self.delta) * self.Cl**2 / (pi * self.AR)
+        Cd = delta_cd + self.Cd_0 + (1+self.delta) * self.Cl**2 / (pi * self.AR) + Cdl 
         # Cd += 0.15
         Cd = delta_cd + self.Cd_0 + (1+self.delta) * self.Cl**2 / (pi * self.AR)
-        return -0.5 * density * Cd * self.surface * sqrt(velocity.dot(velocity)) * velocity
+        print("Cd", Cd)
+        return 0.5 * density * Cd * self.surface * velocity.dot(velocity) * np.array([-1,0,0])
+        #return -0.5 * density * Cd * self.surface * sqrt(velocity.dot(velocity)) * velocity * np.array
 
     def _Calc_Pitch(self, velocity, gamma, D_s, y, y_p, m_s):
         """
@@ -118,44 +121,50 @@ class ParafoilProperties():
                  y_prime: change in rate of change of angle of attack after one time step, float
         """
         #assume airfoil pitch coefficient negligible for now
-
+        
         XYZ = -np.matmul(self.app_m_curv,(velocity - np.matmul(_Skew_Symmetric_Operator(np.array([0, 0, self._Calc_CG_height(m_s)])), np.array([0, y_p,0]))))
         LMN = -np.matmul(self.app_MMOI_curv,np.array([0,y_p,0]))
-        Parafoil_Forces = self._Calc_Lift(y, velocity) + self._Calc_Drag(y, velocity)
+        Parafoil_Forces = self.Parafoil_Forces #self._Calc_Lift(y, velocity) + self._Calc_Drag(y, velocity)
 
         aa = _Skew_Symmetric_Operator(np.array([0,y_p,0]))
         bb = self.app_MMOI_curv + np.array([[0,0,0],[0,0,0],[0,0,m_s * self._Calc_CG_height(m_s) * self._Calc_CG_height(m_s)]])
+
         cc = np.matmul(aa, bb)
         angular_rates_matrix = np.array([0, y_p, 0])
         dd = np.matmul(cc, angular_rates_matrix)
 
-        DE_RHS = LMN + \
+        DE_RHS = LMN - \
+                 dd + \
                  np.matmul(_Skew_Symmetric_Operator(np.array([0,0,self.R - self._Calc_CG_height(m_s)])),XYZ) + \
-                 np.matmul(_Skew_Symmetric_Operator(np.array([0, 0, self._Calc_CG_height(m_s)])), D_s) + \
-                 np.matmul(_Skew_Symmetric_Operator(np.array([0,0,self.R - self._Calc_CG_height(m_s)])),Parafoil_Forces) - \
-                 dd
-
+                 np.matmul(_Skew_Symmetric_Operator(np.array([0,0,self._Calc_CG_height(m_s)])),D_s) + \
+                 np.matmul(_Skew_Symmetric_Operator(np.array([0,0,self.R - self._Calc_CG_height(m_s)])),Parafoil_Forces)
+        
         # print(DE_RHS, "egeg")
 
         y_prime_prime_matrix = np.matmul(np.linalg.inv(bb),DE_RHS)
+        
         y_prime_prime = y_prime_prime_matrix[1]
+        
         y_prime = y_prime_prime * self.ts
         y_1 = y_prime * self.ts
-        print(y_1, "egegeweg")
+        
+        #print(y_1, "egegeweg")
+        '''
         #
-        # vel = sqrt(velocity.dot(velocity))
-        # D_s = sqrt(D_s.dot(D_s))
-        # L_l = -density*vel*vel*self.line_n*self.line_d*self.R*np.cos(y+gamma)**2*np.sin(y+gamma)/2
-        # D_l = density*vel*vel*self.line_n*self.line_d*self.R*np.cos(y+gamma)**3/2
-        # y_prime_prime = (self.R * (D_s * np.cos(y + self.rigging)) + self.R * (
-        #         L_l * np.sin(y + self.rigging) - D_l * np.cos(y + self.rigging)) / 2 - m_s * 9.80665 * self.R * np.sin(
-        #         y - gamma + self.rigging)- 2000000*y_p) / (m_s * self.R * self.R + self.app_MMOI_curv[1])
-        # y_prime = y_prime_prime * self.ts
-        # y_1 = y_p * self.ts
-        # # print(dd, "aegaewaewbwg")
+        vel = sqrt(velocity.dot(velocity))
+        D_s = sqrt(D_s.dot(D_s))
+        L_l = -density*vel*vel*self.line_n*self.line_d*self.R*np.cos(y+gamma)**2*np.sin(y+gamma)/2
+        D_l = density*vel*vel*self.line_n*self.line_d*self.R*np.cos(y+gamma)**3/2
+        y_prime_prime = (self.R * (D_s * np.cos(y + self.rigging)) + self.R * (
+                 L_l * np.sin(y + self.rigging) - D_l * np.cos(y + self.rigging)) / 2 - m_s * 9.80665 * self.R * np.sin(
+                 y - gamma + self.rigging)- 2000000*y_p) / (m_s * self.R * self.R + self.app_MMOI_curv[1][1])
+        y_prime = y_prime_prime * self.ts
+        y_1 = y_p * self.ts
+        '''
+        # print(dd, "aegaewaewbwg")
         return y_1, y_prime
 
-    def _Parafoil_Forces_Moments(self, vel, D_s, m_s):
+    def _Parafoil_Forces_Moments(self, vel, D_s, m_s, vel_r):
         """
 
         :param vel: velocity vector of parafoil, nparray(3)
@@ -163,12 +172,14 @@ class ParafoilProperties():
         :param m_s: mass of payload, float
         :return: Total aerodynamic force vector acting on parafoil, nparray(3)
         """
-        self.gamma = -abs(np.arctan2(vel[2], vel[0]))
+        self.gamma = -abs(np.arctan2(vel_r[2], vel_r[0]))
         a_1, a_p_1 = self._Calc_Pitch(vel, self.gamma, D_s, self.alpa, self.alpa_prime, m_s)
-        self.alpa += a_1
+        #self.alpa += a_1
         self.alpa_prime += a_p_1
         self.Parafoil_Forces = self._Calc_Lift(self.alpa, vel) + self._Calc_Drag(self.alpa, vel)
-        return self._Calc_Lift(self.alpa, vel) + self._Calc_Drag(self.alpa, vel)
+        print(self._Calc_Lift(self.alpa, vel))
+        print(self._Calc_Drag(self.alpa, vel))
+        return self._Calc_Lift(self.alpa, vel) + self._Calc_Drag(self.alpa, vel), a_p_1
 
         #Cm_pitch = self._Calc_Pitch(0)
         #self.Parafoil_Moments = np.array([0,Cm_pitch,0])
@@ -227,7 +238,7 @@ class Payload():
 
     def _Calc_Forces(self, velocity):
         self.Payload_Forces = -0.5 * density * self.payload_cd * velocity * sqrt(velocity.dot(velocity))
-        return -0.5 * density * self.payload_cd * velocity * sqrt(velocity.dot(velocity))
+        return -0.5 * density * self.payload_cd * velocity * sqrt(velocity.dot(velocity)) * np.array([-1,1,1])
 
 class Variable():
     """
@@ -370,14 +381,14 @@ For now, add yaw as an angular rate
 '''
 
 class Dynamics:
-    def __init__(self, dt=0.025, I=np.array([[1,0,0],[0,1,0],[0,0,1]]), mass=10, pos=np.array([0,0,100])):
+    def __init__(self, dt=0.025, I=np.array([[1,0,0],[0,1,0],[0,0,1]]), mass=10, pos=np.array([0,0,300])):
         #properties, I is inertia matrix, mass in Newton
         self.I = I
         self.mass = mass
         #translational
         self.pos = pos #reference system
         self.vel_r = np.array([0,0,0]) # reference system
-        self.vel = np.array([-30,0,11]) #body system
+        self.vel = np.array([10,0,1]) #body system
         self.acc = np.array([0,0,0]) #body system
         #attitude, radians
         self.angular_velocity = np.array([[0,0,0]])

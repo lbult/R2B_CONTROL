@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 from SelfFly import ParafoilProperties, Quaternion, Dynamics, Variable, Payload
 from Wind_Reference_System import _All_Dubin_Paths
 
-ts = 0.05
+ts = 0.01
 #define parafoil-payload system properties
 parafoil = ParafoilProperties(m=635, alpha_0=(-3.5*pi/180), surface=697, a_0=6.41, Cd0=0.005,rigging=10*pi/180, ts=ts)
 mpayload = Payload(M=9979)
@@ -97,34 +97,30 @@ while start == True or pos_z.history[-1] > 0:
         xyx = 1'''
 
     #update quaternion and gravity matrix
-    parafoil_attitude.omega = parafoil._Parafoil_Control(parafoil_dynamics.turn_vel)
-    parafoil_attitude.theta = parafoil.gamma + parafoil.rigging + parafoil.alpa
+    Payload_Vector = mpayload._Calc_Forces(parafoil_dynamics.vel)
+    #print(Payload_Vector)
+    parafoil_attitude.omega = parafoil._Parafoil_Control(parafoil_dynamics.turn_vel) + np.array([0,parafoil._Parafoil_Forces_Moments(parafoil_dynamics.vel, Payload_Vector, mpayload.M, parafoil_dynamics.vel_r)[1],0])
     parafoil_attitude._to_quaternion()
     parafoil_attitude._update_quaternion()
     parafoil_attitude._to_euler()
 
+    alpaa = abs(np.arctan2(parafoil_dynamics.vel[2], parafoil_dynamics.vel[0])) + parafoil.rigging
+    if alpaa < .4:
+        parafoil.alpa = abs(np.arctan2(parafoil_dynamics.vel[2], parafoil_dynamics.vel[0])) + parafoil.rigging #+ parafoil_attitude.theta
+    else:
+        parafoil.alpa = .4
     #update parafoil forces and moments
-    Payload_Vector = mpayload._Calc_Forces(parafoil_dynamics.vel)
-    Parafoil_Vector = parafoil._Parafoil_Forces_Moments(parafoil_dynamics.vel, Payload_Vector, mpayload.M)
+    Parafoil_Vector = parafoil._Parafoil_Forces_Moments(parafoil_dynamics.vel, Payload_Vector, mpayload.M, parafoil_dynamics.vel_r)[0]
     Gravity_Vector = parafoil_attitude.body_g * 9.80665 * parafoil_dynamics.mass
+    #print(Parafoil_Vector)
     parafoil_dynamics.forces = Parafoil_Vector + Payload_Vector + Gravity_Vector
-    
-    #print(parafoil_dynamics.forces)
-    #second parafoil
-    #Parafoil_Vector_2 = parafoil2._Parafoil_Forces_Moments(parafoil_dynamics_2.vel)
-    #Payload_Vector_2 = mpayload._Calc_Forces(parafoil_dynamics_2.vel)
-    #Gravity_Vector_2 = parafoil_attitude.body_g * 9.80665 * parafoil_dynamics.mass
-    #parafoil_dynamics_2.forces = Parafoil_Vector_2 + Payload_Vector_2 + Gravity_Vector_2
-
-    #parafoil_dynamics_2.update_dynamics(parafoil_attitude._rot_b_v())
-    #parafoil_dynamics_2._next_time_step()
 
     # input them into Dynamics
     parafoil_dynamics.update_dynamics(parafoil_attitude._rot_b_v())
     parafoil_dynamics._next_time_step()
 
     #update alpha var
-    #alpa.update_history(parafoil.alpa)
+    alpa.update_history(parafoil.alpa)
 
     #update position vars
     pos_x.update_history(parafoil_dynamics.pos[0])
@@ -132,21 +128,22 @@ while start == True or pos_z.history[-1] > 0:
     pos_z.update_history(parafoil_dynamics.pos[2])
 
     #update velocity vars
-    vel_x.update_history(parafoil_dynamics.vel[0])
-    vel_y.update_history(parafoil_dynamics.vel[1])
-    vel_z.update_history(parafoil_dynamics.vel[2])
+    vel_x.update_history(parafoil_dynamics.vel_r[0])
+    vel_y.update_history(parafoil_dynamics.vel_r[1])
+    vel_z.update_history(parafoil_dynamics.vel_r[2])
 
     #update force vars
     force_x.update_history(parafoil.Parafoil_Forces[0])
     force_z.update_history(parafoil.Parafoil_Forces[2])
-    print(parafoil.gamma)
+    print("Theta", parafoil_attitude.theta)
+    #print("Theta", parafoil_attitude.gamma)
+    #print("Theta", parafoil_attitude.theta)
     #update counter
     ts+= 0.05
     start=False
 
 fig = plt.figure()
 plt.plot(vel_x.history)
-
 
 alpa.plot(None, None, "y", alpa.var_name, False)
 pos_x.plot(pos_y.history, None, "x", pos_y.var_name, False)
