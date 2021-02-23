@@ -4,22 +4,18 @@ import numpy as np
 from math import pi, sqrt, asin
 from matplotlib import pyplot as plt
 from SelfFly import ParafoilProperties, Quaternion, Dynamics, Variable, Payload
-from Wind_Reference_System import _All_Dubin_Paths
+from Dubin_Path import _All_Dubin_Paths
 
 ts = 0.01
 #define parafoil-payload system properties
 parafoil = ParafoilProperties(m=635, alpha_0=(-3.5*pi/180), surface=697, a_0=6.41, Cd0=0.005,rigging=10*pi/180, ts=ts)
-mpayload = Payload(M=9979)
+mpayload = Payload(M=9979,payload_cd=0.02)
 
 #start dynamics and attitude tracking
 parafoil_dynamics = Dynamics(dt=ts, mass=(parafoil.m+mpayload.M))
 parafoil_attitude = Quaternion()
 parafoil_attitude.psi = 3.14
 parafoil_attitude._to_quaternion()
-
-#system two
-parafoil2 = ParafoilProperties(m=635, alpha_0=(-3.5*pi/180), surface=697, a_0=6.41, Cd0=0.005, rigging=10*pi/180, ts=ts)
-parafoil_dynamics_2 = Dynamics(dt=ts, mass=(parafoil2.m+mpayload.M))
 
 #intialize variables to be tracked
 alpa = Variable("alpha")
@@ -30,97 +26,84 @@ vel_x = Variable("Velocity [x]")
 vel_y = Variable("Velocity [y]")
 vel_z = Variable("Velocity [z]")
 
-vel_x_2 = Variable("Velocity 2 [x]")
-
 force_x = Variable("Drag [x]")
 force_z = Variable("Lift [z]")
 
-change_TE_1  = True
-change_TE_2 = True
-change_TE_3 = True
 current_alt = 0
 
+start = True
+controls = False
 calc_dubin = True
 
-start=True
+def takeClosest(myList, myNumber):
+    closest = myList[0]
+    for i in range(1, len(myList)):
+        if abs(myList[i] - myNumber) < closest:
+            closest = myList[i]
+    return closest
 
-while start == True or pos_z.history[-1] > 0:
-    '''
-    if parafoil_dynamics.time > 2.0 and calc_dubin:
-        gamma_traje = abs(np.arctan2(parafoil_dynamics.vel_r[2],sqrt((parafoil_dynamics.vel_r[0])**2+(parafoil_dynamics.vel_r[1])**2)))
-        V_g = sqrt((parafoil_dynamics.vel_r[0])**2+(parafoil_dynamics.vel_r[1])**2+(parafoil_dynamics.vel_r[2])**2)
+while start ==  True or pos_z.history[-1] > 0:
+    
+    #after initialisation of onboard navigation
+    if controls:
+        index = minimum_conditions.alt.index(takeClosest(minimum_conditions.alt, parafoil_dynamics.pos[2]*2))
+        control_input = minimum_conditions.control[index]
 
-        parafoil.Left_TE = pi/2
-        sigma_maxx = np.arcsin(sqrt(V_g * parafoil._Parafoil_Control(V_g)[2]/ 9.81))
-        parafoil.Left_TE = 0
-
-        minimum_conditions = _All_Dubin_Paths(pos_init=np.array([0,0,0]), pos_final=np.array([100,100,0]), 
-        altitude=parafoil_dynamics.pos[2],sigma_max=sigma_maxx,v_g=V_g,gamma_g_traj=gamma_traje
-        )
-        minimum_conditions._Minimum_Tau()
-
-        current_alt = parafoil_dynamics.pos[2]
-        TE = parafoil.b* 9.81 *np.sin(minimum_conditions.sigma_max)/(0.71*V_g**2*np.cos(gamma_traje))
-        
-        calc_dubin = False
-
-    try:
-        if parafoil_dynamics.pos[2] == current_alt and change_TE_1:
-            if minimum_conditions.chosen_traj[0] < 0:
-                parafoil.Left_TE = TE
-                change_TE_1 = False
-            else:
-                parafoil.Right_TE = TE
-                change_TE_1 = False
-    except:
-        xyx =1
-
-    try:
-        if parafoil_dynamics.pos[2] < current_alt-abs(minimum_conditions.chosen_traj[0]) and parafoil_dynamics.pos[2] > current_alt -abs(minimum_conditions.chosen_traj[0])-abs(minimum_conditions.chosen_traj[1]) and change_TE_3:
+        #account for banking, which balances the centrifugal force
+        if control_input < 0:
+            parafoil.Left_TE = TE
             parafoil.Right_TE = 0
+            parafoil.bank = -minimum_conditions.sigma_max
+        elif control_input > 0:
             parafoil.Left_TE = 0
-            change_TE_3 = False
-    except:
-        xyx =1
-
-    try:
-        if parafoil_dynamics.pos[2] < current_alt-abs(minimum_conditions.chosen_traj[1])-abs(minimum_conditions.chosen_traj[0]) and change_TE_2:
+            parafoil.Right_TE = TE
+            parafoil.bank = minimum_conditions.sigma_max
+        else:
+            parafoil.Left_TE = 0
             parafoil.Right_TE = 0
-            parafoil.Left_TE = 0
-            if minimum_conditions.chosen_traj[2] < 0:
-                parafoil.Left_TE = TE
-                change_TE_2 = False
-            else:
-                parafoil.Right_TE = TE
-                change_TE_2 = False
-    except:
-        xyx = 1'''
+            parafoil.bank = 0
 
     #update quaternion and gravity matrix
-    Payload_Vector = mpayload._Calc_Forces(parafoil_dynamics.vel)
-    #print(Payload_Vector)
-    parafoil_attitude.omega = parafoil._Parafoil_Control(parafoil_dynamics.turn_vel) + np.array([0,parafoil._Parafoil_Forces_Moments(parafoil_dynamics.vel, Payload_Vector, mpayload.M, parafoil_dynamics.vel_r)[1],0])
+    parafoil_attitude.omega = parafoil._Parafoil_Control(parafoil_dynamics.turn_vel)
     parafoil_attitude._to_quaternion()
     parafoil_attitude._update_quaternion()
     parafoil_attitude._to_euler()
-
-    alpaa = abs(np.arctan2(parafoil_dynamics.vel[2], parafoil_dynamics.vel[0])) + parafoil.rigging
-    if alpaa < .4:
-        parafoil.alpa = abs(np.arctan2(parafoil_dynamics.vel[2], parafoil_dynamics.vel[0])) + parafoil.rigging #+ parafoil_attitude.theta
-    else:
-        parafoil.alpa = .4
+    
     #update parafoil forces and moments
-    Parafoil_Vector = parafoil._Parafoil_Forces_Moments(parafoil_dynamics.vel, Payload_Vector, mpayload.M, parafoil_dynamics.vel_r)[0]
+    Payload_Vector = mpayload._Calc_Forces(parafoil_dynamics.vel)
+    Parafoil_Vector = parafoil._Parafoil_Forces_Moments(parafoil_dynamics.vel)
     Gravity_Vector = parafoil_attitude.body_g * 9.80665 * parafoil_dynamics.mass
-    #print(Parafoil_Vector)
+    #total force vector
     parafoil_dynamics.forces = Parafoil_Vector + Payload_Vector + Gravity_Vector
 
     # input them into Dynamics
     parafoil_dynamics.update_dynamics(parafoil_attitude._rot_b_v())
     parafoil_dynamics._next_time_step()
 
+
+    if sqrt(parafoil_dynamics.acc.dot(parafoil_dynamics.acc)) < .5 and calc_dubin:
+        #calculate maximum bank angle during turn
+        parafoil.Left_TE = pi/2
+        sigma_maxx = np.arcsin(sqrt(parafoil_dynamics.vel_mag * parafoil._Parafoil_Control(parafoil_dynamics.vel_mag)[2]/ 9.81))
+        parafoil.Left_TE = 0
+
+        #calculate trajectory
+        minimum_conditions = _All_Dubin_Paths(pos_init=np.array([0,0,0]), pos_final=np.array([100,100,pi/2]), 
+        altitude=parafoil_dynamics.pos[2],sigma_max=sigma_maxx,v_g=parafoil_dynamics.vel_mag,
+        gamma_g_traj=parafoil_dynamics.gamma)
+        minimum_conditions._Minimum_Tau()
+        
+        #initiate control
+        TE = parafoil.b * 9.81 *np.sin(minimum_conditions.sigma_max)/(0.71*(minimum_conditions.v_min)**2*np.cos(parafoil_dynamics.gamma))
+        controls = True
+        print(TE)
+        print(minimum_conditions.sigma_max)
+
+        calc_dubin = False
+
+
     #update alpha var
-    alpa.update_history(parafoil.alpa)
+    alpa.update_history(sqrt(parafoil_dynamics.acc.dot(parafoil_dynamics.acc)))
 
     #update position vars
     pos_x.update_history(parafoil_dynamics.pos[0])
@@ -133,26 +116,25 @@ while start == True or pos_z.history[-1] > 0:
     vel_z.update_history(parafoil_dynamics.vel_r[2])
 
     #update force vars
-    force_x.update_history(parafoil.Parafoil_Forces[0])
+    force_x.update_history(Parafoil_Vector[2])
     force_z.update_history(parafoil.Parafoil_Forces[2])
-    print("Theta", parafoil_attitude.theta)
-    #print("Theta", parafoil_attitude.gamma)
-    #print("Theta", parafoil_attitude.theta)
+
     #update counter
-    ts+= 0.05
+    ts+= 0.01
     start=False
 
+parafoil._Calc_Alpha_Trim(0.02)
+
 fig = plt.figure()
-plt.plot(vel_x.history)
 
 alpa.plot(None, None, "y", alpa.var_name, False)
-pos_x.plot(pos_y.history, None, "x", pos_y.var_name, False)
-pos_z.plot(pos_x.history, None, "y", pos_x.var_name, False)
+pos_x.plot(pos_y.history, None, "x", pos_y.var_name, True)
+pos_z.plot(pos_x.history, None, "y", pos_x.var_name, True)
 vel_x.plot(None, None, "y", vel_x.var_name, False)
 #vel_y.plot(None, None, "y", vel_y.var_name)
 vel_z.plot(None, None, "y", vel_z.var_name, False)
 force_x.plot(None, None, "y", force_x.var_name, False)
-force_z.plot(None, None, "y", force_z.var_name, False)
+#force_z.plot(None, None, "y", force_z.var_name, False)
 
 
 fig = plt.figure()
@@ -163,3 +145,4 @@ ax.scatter3D(pos_x.history, pos_y.history, pos_z.history, c=pos_z.history, cmap=
 plt.show()
 
 mm = 1
+    

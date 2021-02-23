@@ -10,9 +10,9 @@ class _All_Dubin_Paths():
         self.pos_final = pos_final
         self.pos_final_o = np.array([-self.pos_final[1], self.pos_final[0], self.pos_final[2] - pi/2])
 
-
         self.gamma_g_traj = gamma_g_traj
         self.altitude = altitude
+        self.alt_init = altitude
         self.sigma_max = sigma_max
         self.v_g = v_g
         self.sigma_max_init = sigma_max
@@ -55,6 +55,7 @@ class _All_Dubin_Paths():
         self.pos_y = [0]
         self.heading = [0]
         self.alt = [altitude]
+        self.control = [0]
 
     def _RSL(self):
         try:
@@ -156,6 +157,7 @@ class _All_Dubin_Paths():
             elif self.sigma_max<0:
                 tau_place+=1
                 self.sigma_max = self.sigma_max_init
+                self._Remove_Path()
             elif tau_place >= 4:
                 print("Oof")
                 not_converged = False
@@ -205,6 +207,8 @@ class _All_Dubin_Paths():
                 if self.tau_rsl < 1.02*self.altitude and self.tau_rsl > 0.98*self.altitude:
                     self.chosen_traj = self.rsl_traj * np.array([1*self.r_traj, 1, -1*self.r_traj]) * abs(tan(self.gamma_g_traj))
                     not_converged = False
+                else:
+                    self._Remove_Path()
             elif tau_place == 1:
                 self._RSR()
                 self._Go_Right(self.rsr_traj[0])
@@ -213,6 +217,8 @@ class _All_Dubin_Paths():
                 if self.tau_rsr < 1.02*self.altitude and self.tau_rsr > 0.98*self.altitude:
                     self.chosen_traj = self.rsr_traj * np.array([1*self.r_traj, 1, 1*self.r_traj]) * abs(tan(self.gamma_g_traj))
                     not_converged = False
+                else:
+                    self._Remove_Path()
             elif tau_place == 2:
                 self._LSR()
                 self._Go_Left(self.lsr_traj[0])
@@ -221,6 +227,8 @@ class _All_Dubin_Paths():
                 if self.tau_lsr < 1.02*self.altitude and self.tau_lsr > 0.98*self.altitude:
                     self.chosen_traj = self.lsr_traj * np.array([-1*self.r_traj, 1, 1*self.r_traj]) * abs(tan(self.gamma_g_traj))
                     not_converged = False
+                else:
+                    self._Remove_Path()
             elif tau_place == 3:
                 self._LSL()
                 self._Go_Left(self.lsl_traj[0])
@@ -229,6 +237,8 @@ class _All_Dubin_Paths():
                 if self.tau_lsl < 1.02*self.altitude and self.tau_lsl > 0.98*self.altitude:
                     self.chosen_traj = self.lsl_traj * np.array([-1*self.r_traj, 1, -1*self.r_traj]) * abs(tan(self.gamma_g_traj))
                     not_converged = False
+                else:
+                    self._Remove_Path()
 
 
 
@@ -242,7 +252,8 @@ class _All_Dubin_Paths():
             self.pos_x.append(x_i - self.r_traj*sin(this_heading) + self.r_traj*sin(this_heading + dtheta*i))
             self.pos_y.append(y_i + self.r_traj*cos(this_heading) - self.r_traj*cos(this_heading + dtheta*i))
             self.heading.append(self.heading[-1]+dtheta)
-            self.alt.append(self.alt[-1]-abs(dtheta*tan(self.gamma_traj)))
+            self.alt.append(self.alt[-1]-abs(dtheta*self.r_traj*tan(self.gamma_traj)))
+            self.control.append(-1)
             i += 1
 
     def _Go_Right(self, rotate):
@@ -255,7 +266,8 @@ class _All_Dubin_Paths():
             self.pos_x.append(x_i + self.r_traj*sin(this_heading) - self.r_traj*sin(this_heading - dtheta*i))
             self.pos_y.append(y_i - self.r_traj*cos(this_heading) + self.r_traj*cos(this_heading - dtheta*i))
             self.heading.append(self.heading[-1]-dtheta)
-            self.alt.append(self.alt[-1]-abs(dtheta*tan(self.gamma_traj)))
+            self.alt.append(self.alt[-1]-abs(dtheta*self.r_traj*tan(self.gamma_traj)))
+            self.control.append(1)
             i += 1
 
     def _Straight(self, length):
@@ -268,10 +280,12 @@ class _All_Dubin_Paths():
             self.pos_y.append(self.pos_y[-1]+dlength*sin(self.heading[-1]))
             self.heading.append(self.heading[-1])
             self.alt.append(self.alt[-1]-abs(dlength*tan(self.gamma_g_traj)))
+            self.control.append(0)
             i += 1
 
     def _Remove_Path(self):
         self.pos_x = [0]
         self.pos_y = [0]
         self.heading = [0]
-        self.alt = [0]
+        self.alt = [self.alt_init]
+        self.control = [0]

@@ -1,4 +1,4 @@
-from Wind_Reference_System import _All_Dubin_Paths
+from Dubin_Path import _All_Dubin_Paths
 import matplotlib.pyplot as plt
 from math import tan, cos, pi, sin, atan, asin, acos,sqrt
 import numpy as np
