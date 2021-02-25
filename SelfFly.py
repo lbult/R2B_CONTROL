@@ -67,6 +67,7 @@ class ParafoilProperties():
 
         self.Parafoil_cloth_mass = 2.1*cloth_density*self.surface
         #self._Apparent_Masses()
+        self._Calc_Alpha_Trim(0.02)
 
 
     def _Calc_CG_height(self, payload_m):
@@ -81,23 +82,39 @@ class ParafoilProperties():
         zw = (Zw-Zcg)/self.c
         xw = (Xw)/self.c
         
-        Delta = 1/(self.a_0) - (1+self.delta)/(pi*self.AR)
-        Gamma = 1/(self.a_0) - 2*(1+self.delta)/(pi*self.AR)
+        Delta = 1/(self.a) - (1+self.delta)/(pi*self.AR)
+        Gamma = 1/(self.a) - 2*(1+self.delta)/(pi*self.AR)
         Cl0 = abs(self.alpha_0) * self.a
 
-        Cm_0 = -Zl*self.Cdl - Zp*Cds + Cl0*xw - self.Cd_0*zw
-        Cm_1 = self.a_0*(xw+Cl0*Delta*zw)
+        Cm_0 = -Zl*self.Cdl + Zp*Cds + Cl0*xw - self.Cd_0*zw
+        Cm_1 = self.a*(xw+Cl0*Delta*zw)
         Cm_2 = Gamma*zw*self.a**2
 
-        def Func(x):
-            return Cm_0 + Cm_1*x + Cm_2*x**2 -297/68000 * (x*pi/180)**5 + 1/1024*(x*pi/180)**4 - 13/1536*(x*pi/180)**3 + 179/6400*(x*pi/180)**2 - 1303/24000*(x*pi/180)
+        print(-Zl*self.Cdl + Zp*Cds)
 
-        x = np.linspace(-pi/18, pi/18, 1000)
+        def f(x):
+            return Cm_0 + Cm_1*x + Cm_2*x**2 +0.09-2.1298*x+22.7498*x**2-649.379*x**3+4915*x**4-10814.1*x**5
+        
+        def dfdx(x):
+            return Cm_1 + 2*Cm_2*x - 2.1298+22.7498*2*x-3*649.379*x**2+4*4915*x**3-5*10814.1*x**4
+        
+        def Newton_method(x_0):
+            iteration = 0
+            x_tilde = x_0
+            while iteration < 100:
+                x_tilde = x_tilde - f(x_tilde)/dfdx(x_tilde)
+                iteration += 1
+            return x_tilde
+
+        print(Newton_method(7*pi/180)*180/pi)
+
+        x = np.linspace(-pi/38, pi/18, 1000)
         y = np.zeros(1000)
         counter = 0
         for i in x:
-            y[counter] = Func(i)
+            y[counter] = f(i)
             counter+=1
+
         plt.plot(x,y)
         plt.show()
 
