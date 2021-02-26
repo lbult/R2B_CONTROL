@@ -96,8 +96,8 @@ while start ==  True or pos_z.history[-1] > 0:
         #initiate control
         TE = parafoil.b * 9.81 *np.sin(minimum_conditions.sigma_max)/(0.71*(minimum_conditions.v_min)**2*np.cos(parafoil_dynamics.gamma))
         controls = True
-        print(TE)
-        print(minimum_conditions.sigma_max)
+        #print(TE)
+        #print(minimum_conditions.sigma_max)
 
         calc_dubin = False
 

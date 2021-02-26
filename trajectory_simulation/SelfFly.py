@@ -34,13 +34,13 @@ class ParafoilProperties():
         
         #airfoil properties
         self.a_0 = a_0*2*pi*self.AR*tanh(a_0/(2*pi*self.AR))/a_0 #reduction for LOW AR wing
-        print(self.a_0)
+        #print(self.a_0)
         self.alpha_0 = alpha_0 #radians
         a = 0.03714, 1
         b = 0.14286, 5
         self.tau = (self.AR - a[1])*(b[0]-a[0])/(b[1]-a[1])+a[0] #correction factor for small aspect ratio wings
         self.a = a_0/(1+(1+self.tau)*(a_0/(pi*self.AR)))
-        print(self.a)
+
         self.Cd_0 = Cd0 #find for airfoil shape
         self.delta = delta #estimate using 5.20 in Anderson, function of taper ratio
         self.app_MMOI_curv = np.array([0,0,0])
@@ -90,10 +90,16 @@ class ParafoilProperties():
         Cm_1 = self.a*(xw+Cl0*Delta*zw)
         Cm_2 = Gamma*zw*self.a**2
 
-        print(-Zl*self.Cdl + Zp*Cds)
+        #print(-Zl*self.Cdl + Zp*Cds)
 
         def f(x):
             return Cm_0 + Cm_1*x + Cm_2*x**2 +0.09-2.1298*x+22.7498*x**2-649.379*x**3+4915*x**4-10814.1*x**5
+
+        def g(x):
+            return Cm_0 + Cm_1*x + Cm_2*x**2 + 69176.3*x**6-31385.3*x**5+4353.3*x**4-102.92*x**3 - 11.5626*x**2-1.04585*x-0.035
+        
+        def dgdx(x):
+            return Cm_1 + 2*Cm_2*x + 6*69176.3*x**5-5*31385.3*x**4+4*4353.3*x**3-3*102.92*x**2-2*11.5626*x -1.04585
         
         def dfdx(x):
             return Cm_1 + 2*Cm_2*x - 2.1298+22.7498*2*x-3*649.379*x**2+4*4915*x**3-5*10814.1*x**4
