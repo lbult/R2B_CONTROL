@@ -3,12 +3,14 @@ import math
 import numpy as np
 from math import pi, sqrt, asin
 from matplotlib import pyplot as plt
-from SelfFly import ParafoilProperties, Quaternion, Dynamics, Variable, Payload
+from SelfFly import ParafoilProperties, Dynamics, Payload
+from support import Quaternion, Variable
 from Dubin_Path import _All_Dubin_Paths
 
 ts = 0.01
 #define parafoil-payload system properties
-parafoil = ParafoilProperties(m=635, alpha_0=(-3.5*pi/180), surface=697, a_0=6.41, Cd0=0.005,rigging=10*pi/180, ts=ts)
+parafoil = ParafoilProperties(m=635, alpha_0=(-3.5*pi/180), surface=697, 
+    a_0=6.41, Cd0=0.005,rigging=10*pi/180, ts=ts)
 mpayload = Payload(M=9979,payload_cd=0.02)
 
 #start dynamics and attitude tracking
@@ -42,11 +44,12 @@ def takeClosest(myList, myNumber):
             closest = myList[i]
     return closest
 
-while start ==  True or pos_z.history[-1] > 0:
+while start or pos_z.history[-1] > 0:
     
     #after initialisation of onboard navigation
     if controls:
-        index = minimum_conditions.alt.index(takeClosest(minimum_conditions.alt, parafoil_dynamics.pos[2]*2))
+        index = minimum_conditions.alt.index(takeClosest(minimum_conditions.alt, 
+            parafoil_dynamics.pos[2]*2))
         control_input = minimum_conditions.control[index]
 
         #account for banking, which balances the centrifugal force
@@ -88,17 +91,16 @@ while start ==  True or pos_z.history[-1] > 0:
         parafoil.Left_TE = 0
 
         #calculate trajectory
-        minimum_conditions = _All_Dubin_Paths(pos_init=np.array([0,0,0]), pos_final=np.array([100,100,pi/2]), 
-        altitude=parafoil_dynamics.pos[2],sigma_max=sigma_maxx,v_g=parafoil_dynamics.vel_mag,
+        minimum_conditions = _All_Dubin_Paths(pos_init=np.array([0,0,0]), 
+        pos_final=np.array([100,100,pi/2]), 
+        altitude=parafoil_dynamics.pos[2],sigma_max=sigma_maxx,
+        v_g=parafoil_dynamics.vel_mag,
         gamma_g_traj=parafoil_dynamics.gamma)
         minimum_conditions._Minimum_Tau()
         
         #initiate control
         TE = parafoil.b * 9.81 *np.sin(minimum_conditions.sigma_max)/(0.71*(minimum_conditions.v_min)**2*np.cos(parafoil_dynamics.gamma))
         controls = True
-        #print(TE)
-        #print(minimum_conditions.sigma_max)
-
         calc_dubin = False
 
 
