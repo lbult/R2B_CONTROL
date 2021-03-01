@@ -26,19 +26,15 @@ class _All_Dubin_Paths():
         self.tau_rsr = 0
         self.tau_lsr = 0
         self.tau_lsl = 0
-        self.tau_rlr = 0
-        self.tau_lrl = 0
         
         self.tau_min = 0
         self.eta = 0
         
-        #initiate all lengths t, p, q
+        #initiate lengths for all sections
         self.rsl_traj = np.array([0,0,0])
         self.rsr_traj = np.array([0,0,0])
         self.lsr_traj = np.array([0,0,0])
         self.lsl_traj = np.array([0,0,0])
-        self.rlr_traj = np.array([0,0,0])
-        self.lrl_traj = np.array([0,0,0])
 
         self.chosen_traj = np.array([0,0,0])
 
@@ -56,6 +52,7 @@ class _All_Dubin_Paths():
         self.heading = [0]
         self.alt = [altitude]
         self.control = [0]
+        self.arc_centers = []
 
     def _RSL(self):
         try:
@@ -132,7 +129,7 @@ class _All_Dubin_Paths():
         self._RSR()
         self._LSL()
         min_array = [self.tau_rsl,self.tau_rsr,self.tau_lsr,self.tau_lsl]
-        print(min_array)
+        #print(min_array)
         min_arrays = []
         for taus in min_array:
             if taus != 0:
@@ -143,7 +140,7 @@ class _All_Dubin_Paths():
         tau_full = abs(2*pi*self.r_traj*tan(self.gamma_traj))
         
         self.eta = (self.altitude - self.tau_min)/tau_full
-        print(self.eta)
+        #print(self.eta)
 
         iteration_1 = True
         not_converged=True
@@ -247,6 +244,7 @@ class _All_Dubin_Paths():
         y_i = self.pos_y[-1]
         this_heading = self.heading[-1]
         dtheta = rotate/100
+        self.arc_centers.append([x_i - self.r_traj*sin(this_heading), y_i + self.r_traj*cos(this_heading)])
         i = 0
         while i < 100:
             self.pos_x.append(x_i - self.r_traj*sin(this_heading) + self.r_traj*sin(this_heading + dtheta*i))
@@ -261,6 +259,7 @@ class _All_Dubin_Paths():
         y_i = self.pos_y[-1]
         dtheta = rotate/100 
         this_heading = self.heading[-1]
+        self.arc_centers.append([x_i + self.r_traj*sin(this_heading), y_i - self.r_traj*cos(this_heading)])
         i = 0
         while i < 100:
             self.pos_x.append(x_i + self.r_traj*sin(this_heading) - self.r_traj*sin(this_heading - dtheta*i))
@@ -271,8 +270,6 @@ class _All_Dubin_Paths():
             i += 1
 
     def _Straight(self, length):
-        #self.pos_x.append(self.pos_x[-1]+length*cos(self.heading[-1]))
-        #self.pos_y.append(self.pos_y[-1]+length*sin(self.heading[-1]))
         dlength = length/100
         i = 0
         while i < 100:
@@ -289,3 +286,4 @@ class _All_Dubin_Paths():
         self.heading = [0]
         self.alt = [self.alt_init]
         self.control = [0]
+        self.arc_centers = []

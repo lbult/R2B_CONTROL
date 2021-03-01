@@ -66,7 +66,7 @@ class ParafoilProperties():
 
         self.Parafoil_cloth_mass = 2.1*cloth_density*self.surface
         #self._Apparent_Masses()
-        self._Calc_Alpha_Trim(0.02)
+        #self._Calc_Alpha_Trim(0.02)
 
 
     def _Calc_CG_height(self, payload_m):
