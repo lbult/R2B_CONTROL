@@ -132,24 +132,24 @@ class _All_Dubin_Paths():
         self._RSR()
         self._LSL()
         min_array = [self.tau_rsl,self.tau_rsr,self.tau_lsr,self.tau_lsl]
-        print(min_array, "min_array")
+        # print(min_array, "<--min_array")
         min_arrays = []
         for taus in min_array:
             if taus != 0:
                 min_arrays.append(taus)
-
+        
         self.tau_min = min(min_arrays)
         tau_place = min_array.index(self.tau_min)
-
         tau_full = abs(2*pi*self.r_traj*tan(self.gamma_traj))
+
         
         self.eta = (self.altitude - self.tau_min)/tau_full
-        print(self.eta, "eta")
+        # print(self.eta, "<--eta")
 
         iteration_1 = True
-        not_converged=True
-        tau_place=0
-
+        not_converged = True
+        tau_place = 0
+        # print(self.lsr_traj, "<--lsr_traj")
         while not_converged and self.eta > 0:
             
             if self.sigma_max> 0:
@@ -170,7 +170,7 @@ class _All_Dubin_Paths():
 
             if iteration_1:
                 if tau_place == 0:
-                    self._RSL()
+                    self._RSL() # i dont think that these dubin paths need to be reinitialized everytime right?
                     #self.pos_final = np.array([self.pos_final[1], -self.pos_final[0], self.pos_final[2] - pi/2])
                     self._Go_Right(self.rsl_traj[0])
                     self._Straight(self.rsl_traj[1])
@@ -240,8 +240,11 @@ class _All_Dubin_Paths():
                     not_converged = False
                 else:
                     self._Remove_Path()
+
+
         self.pos_xs_w, self.pos_ys_w = self._Wind_coordinate_Transform(self.pos_xs, self.pos_ys, self.alt)
         self.pos_x_w, self.pos_y_w = self._Wind_coordinate_Transform(self.pos_x, self.pos_y, self.alt)
+
 
 
     def _Go_Left(self, rotate):
