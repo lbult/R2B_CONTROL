@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from math import cos, sin, tan, pi, tanh, atan, asin, acos, sqrt
 from scipy.integrate import solve_ivp
-import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits import mplot3d
 
@@ -67,7 +66,7 @@ class ParafoilProperties():
 
         self.Parafoil_cloth_mass = 2.1*cloth_density*self.surface
         #self._Apparent_Masses()
-        self._Calc_Alpha_Trim(0.02)
+        #self._Calc_Alpha_Trim(0.02)
 
 
     def _Calc_CG_height(self, payload_m):
@@ -127,8 +126,10 @@ class ParafoilProperties():
     def _Calc_Lift(self, alpha, velocity):
         """
         Function for calculating the lift force of the parafoil
-        :param alpha: angle of attack of the parafoil, angle between the chord line of parafoil (horizontal axis of body reference system,
-         and freestream air (horizontal axis of environment reference system, float
+        :param alpha: angle of attack of the parafoil, 
+            angle between the chord line of parafoil 
+            (horizontal axis of body reference system, and freestream air) 
+            (horizontal axis of environment reference system, float)
         :param velocity: velocity of parafoil in the body reference system, nparray(3)
         :return: lift force of the parafoil, normal to chord (Fn), vertical in vehicle axis system, nparray(3)
         """
@@ -155,21 +156,19 @@ class ParafoilProperties():
         
         return -0.5 * density * Cd * self.surface * sqrt(velocity.dot(velocity)) * velocity
 
-    def _Calc_Pitch(self):
-        
-        return 
-
     def _Parafoil_Forces_Moments(self, vel):
         """
         :param vel: velocity vector of parafoil, nparray(3)
         :return: Total aerodynamic force vector acting on parafoil, nparray(3)
         """
-        
         self.Parafoil_Forces = self._Calc_Lift(self.alpa, vel) + self._Calc_Drag(self.alpa, vel)
-        
         return self._Calc_Lift(self.alpa, vel) + self._Calc_Drag(self.alpa, vel)
 
     def _Parafoil_Control(self, turn_velocity):
+        """
+        :param turn_velocity: velocity tangent to turning arc, nparray(3)
+        :return: yaw rate of the parafoil under turning, nparray(3)
+        """
         #trailing edge deflection in radians
         if self.Left_TE != 0 and self.Right_TE == 0:
             return np.array([0,0, 0.71 * turn_velocity * self.Left_TE / self.b])
@@ -180,6 +179,14 @@ class ParafoilProperties():
 
 
 class Payload():
+    """
+    :class calculates drag of the paylaod based on payload properties
+    :param M: mass of the payload, int/float
+    :param shape: shape of the object for Cd, NOT FINISHED
+    :param payload_cd: drag coefficient of the object based on payload shape
+    :param payload_surface: exposed frontal_area of the payload
+    :return: 
+    """
     def __init__(self, M=10, shape="", payload_cd=0.02, payload_surface=1):
         self.M=M
         self.shape = shape
@@ -191,146 +198,8 @@ class Payload():
         self.Payload_Forces = -0.5 * density * self.payload_cd * velocity * sqrt(velocity.dot(velocity))
         return -0.5 * density * self.payload_cd * velocity * sqrt(velocity.dot(velocity)) * np.array([-1,1,1])
 
-class Variable():
-    """
-    Logger class, for storing and plotting any and all variables
-    """
-    def __init__(self, var_name=""):
-        self.history = []
-        self.var_name = var_name
-    
-    def update_history(self, value):
-        self.history.append(value)
-
-    def plot(self, subplot_one, subplot_two, x_or_y, ylabel, normalize):
-        #input lists of data
-        if subplot_one == None:
-            fig = plt.figure()
-            if normalize:
-                plt.gca().set_aspect('equal', adjustable='box')
-            plt.plot(self.history)
-            plt.xlabel("Time")
-            plt.ylabel(self.var_name)
-            plt.show()
-
-        elif x_or_y == "x":
-            
-            fig = plt.figure()
-            if normalize:
-                plt.gca().set_aspect('equal', adjustable='box')
-            ax1 = fig.add_subplot(111)
-            ax1.plot(self.history, subplot_one)
-            plt.xlabel(self.var_name)
-            plt.ylabel(ylabel)
-            
-            if subplot_two != None:
-                ax2 = fig.add_subplot(112)
-                ax2.plot(self.history, subplot_two)
-            
-            plt.show()
-
-        elif x_or_y == "y":
-            
-            fig = plt.figure()
-            if normalize:
-                plt.gca().set_aspect('equal', adjustable='box')
-            ax1 = fig.add_subplot(111)
-            ax1.plot(subplot_one, self.history)
-            plt.xlabel(self.var_name)
-            plt.xlabel(ylabel)
-
-            if subplot_two != None:
-                ax2 = fig.add_subplot(112)
-                if normalize:
-                    plt.gca().set_aspect('equal', adjustable='box')
-                ax2.plot(subplot_two, self.history)
-
-            plt.show()
-
-        else:
-            print("Wrong")
-
-    def plot_3D(self): 
-        #plotting more variables
-        print("Empty")
-
-class Quaternion():
-    def __init__(self, omega=np.array([0,0,0])):
-        self.quaternion = np.array([1,0,0,0])
-        self.dt = 0.025 #time interval of integration
-        self.phi = 0
-        self.theta = 0
-        self.psi = 0 
-        self.omega = omega
-        self.body_g = np.array([0,0,0])
-
-    def _to_quaternion(self):
-        """
-        Set value of attitude quaternion from euler angles.
-
-        :param euler: ([float]) euler angles roll, pitch, yaw.
-        """
-        #self.phi, self.theta, self.psi = euler
-        e0 = np.cos(self.psi / 2) * np.cos(self.theta / 2) * np.cos(self.phi / 2) + np.sin(self.psi / 2) * np.sin(self.theta / 2) * np.sin(
-            self.phi / 2)
-        e1 = np.cos(self.psi / 2) * np.cos(self.theta / 2) * np.sin(self.phi / 2) - np.sin(self.psi / 2) * np.sin(self.theta / 2) * np.cos(
-            self.phi / 2)
-        e2 = np.cos(self.psi / 2) * np.sin(self.theta / 2) * np.cos(self.phi / 2) + np.sin(self.psi / 2) * np.cos(self.theta / 2) * np.sin(
-            self.phi / 2)
-        e3 = np.sin(self.psi / 2) * np.cos(self.theta / 2) * np.cos(self.phi / 2) - np.cos(self.psi / 2) * np.sin(self.theta / 2) * np.sin(
-            self.phi / 2)
-        
-        self.quaternion = np.array([e0, e1, e2, e3])
-
-    def _to_euler(self):
-        #set each individual element
-        e0, e1, e2, e3 = self.quaternion
-        #update roll, pitch, yaw
-        self.phi = np.arctan2(2 * (e0 * e1 + e2 * e3), e0 ** 2 + e3 ** 2 - e1 ** 2 - e2 ** 2)
-        self.theta = np.arcsin(2 * (e0 * e2 - e1 * e3))
-        self.psi = np.arctan2(2 * (e0 * e3 + e1 * e2), e0 ** 2 + e1 ** 2 - e2 ** 2 - e3 ** 2)
-        #print(self.psi)
-        self.body_g = np.array([-sin(self.theta), sin(self.phi)*cos(self.theta), cos(self.phi)*cos(self.theta)])
-
-    def _rot_b_v(self):
-        """
-        Rotate vector from body frame to vehicle frame.
-
-        :param Theta: ([float]) vector to rotate, either as Euler angles or quaternion
-        :return: ([float]) rotated vector
-        """
-        
-        e0, e1, e2, e3 = self.quaternion
-        transfer = np.array([[-1 + 2 * (e0 ** 2 + e1 ** 2), 2 * (e1 * e2 + e3 * e0), 2 * (e1 * e3 - e2 * e0)],
-                            [2 * (e1 * e2 - e3 * e0), -1 + 2 * (e0 ** 2 + e2 ** 2), 2 * (e2 * e3 + e1 * e0)],
-                            [2 * (e1 * e3 + e2 * e0), 2 * (e2 * e3 - e1 * e0), -1 + 2 * (e0 ** 2 + e3 ** 2)]])
-        return transfer
-
-    def _update_quaternion(self):
-        def _f_attitude_dot(t, y):
-            """
-            Right hand side of quaternion attitude differential equation.
-
-            :param t: (float) time of integration
-            :param attitude: ([float]) attitude quaternion
-            :param omega: ([float]) angular velocity
-            :return: ([float]) right hand side of quaternion attitude differential equation.
-            """
-            p, q, r = self.omega
-            T = np.array([[0, -p, -q, -r],
-                            [p, 0, r, -q],
-                            [q, -r, 0, p],
-                            [r, q, -p, 0]
-                            ])
-            return np.concatenate([0.5 * np.dot(T, y)])
-        #print(_f_attitude_dot(0,self.quaternion))
-
-        my_solution = solve_ivp(fun=_f_attitude_dot, t_span=(0, self.dt), y0=self.quaternion)
-        self.quaternion = my_solution.y[:, -1]
-
 class Dynamics:
     def __init__(self, dt=0.025, mass=10, pos=np.array([0,0,500])):
-        
         #translational
         self.pos = pos #reference system
         self.vel_r = np.array([0,0,0]) # reference system
