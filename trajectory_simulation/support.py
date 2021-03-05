@@ -90,13 +90,17 @@ class Variable():
     """
     Logger class, for storing and plotting any and all variables
     """
-    def __init__(self, var_name=""):
+    def __init__(self, var_name="", limit=10**8):
         self.history = []
         self.var_name = var_name
+        self.limit = limit
         
-    
     def update_history(self, value):
-        self.history.append(value)
+        if value < self.limit and value > -self.limit:
+            self.history.append(value)
+        else:
+            value = self.limit
+            self.history.append(value)
 
     def plot(self, subplot_one, subplot_two, x_or_y, ylabel, normalize):
         #input lists of data

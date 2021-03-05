@@ -16,7 +16,7 @@ mpayload = Payload(M=9979,payload_cd=0.02)
 #start dynamics and attitude tracking
 parafoil_dynamics = Dynamics(dt=ts, mass=(parafoil.m+mpayload.M))
 parafoil_attitude = Quaternion()
-parafoil_attitude.psi = 3.14
+parafoil_attitude.psi = 0
 parafoil_attitude._to_quaternion()
 
 #intialize variables to be tracked
@@ -31,6 +31,15 @@ vel_z = Variable("Velocity [z]")
 error_time = Variable("Error")
 error_time.update_history(0)
 
+Desired_heading = Variable("Desired heading")
+Desired_heading.update_history(0)
+
+TE_deflection = Variable(var_name="TE Deflection", limit=math.pi / 2 )
+
+Control_Input = Variable(var_name="Control_Input", limit=0.5)
+
+Psi = Variable(var_name="psi")
+
 force_x = Variable("Drag [x]")
 force_z = Variable("Lift [z]")
 
@@ -39,6 +48,7 @@ current_alt = 0
 start = True
 controls = False
 calc_dubin = True
+first_turn = True
 
 def takeClosest(myList, myNumber):
     closest = myList[0]
@@ -55,47 +65,47 @@ while start or pos_z.history[-1] > 0:
             parafoil_dynamics.pos[2]*2))
         control_input = minimum_conditions.control[index]
 
-        def _check_control(desired_radius, desired_heading, actual_position, arc_center, left_or_right):
+        def _check_control(desired_heading, actual_position, desired_pos_x, desired_pos_y, actual_heading):
             '''
             :param left_or_right: negative if left turn, positive if right turn
             :param actual_position: actual position ([0,1]) and heading ([2]), nparray(3)
             :param arc_center: desired arc center of turn, list(2)
             :param desired_radius: desired turn radius, float
             '''
-            dx = arc_center[0] - actual_position[0]
-            dy = arc_center[1] - actual_position[1]
-            actual_radius = sqrt(dx**2 + dy**2)
+            dx = actual_position[0] - desired_pos_x
+            dy = actual_position[1] - desired_pos_y
             
+            dphi = actual_heading - desired_heading
+            e_along = dx*math.cos(desired_heading) + dy*math.sin(desired_heading)  
+            dphi_dt = (desired_heading - Desired_heading.history[-1])/ts
+            
+            #actual_radius = sqrt(dx**2 + dy**2)
+
             #set PID gains
-            kp = 0.0005
-            kd = 0.00001
-
-            if left_or_right < 0:
-                e = (desired_radius - actual_radius)*math.cos(desired_heading)
-                de_dt = (error_time.history[-1]-e) / ts
-            elif left_or_right > 0:
-                e = (actual_radius - desired_radius)*math.cos(desired_heading)
-                de_dt = (e-error_time.history[-1]) / ts
+            kp = 0.012
+            kd = 0.0665
             
-            delta_control = kp * e + kd*de_dt
+            #define proportional and derivate error
+            e = dx*math.sin(desired_heading) - dy*math.cos(desired_heading) #+ factor*dphi#(desired_radius - actual_radius)*math.cos(desired_heading)
+            de_dt = - dphi_dt * e_along - parafoil_dynamics.vel_mag * math.cos(parafoil_dynamics.gamma) * math.sin(dphi)
+            
+            #define control input
+            Control_Input.update_history(kp * e + kd * de_dt)
 
+            Psi.update_history(parafoil_attitude.psi)
             error_time.update_history(e)
 
-            return delta_control
+            return
+        
+        _check_control(minimum_conditions.heading[index], parafoil_dynamics.pos, minimum_conditions.pos_x[index],  minimum_conditions.pos_y[index], parafoil_attitude.psi)
 
-        #account for banking, which balances the centrifugal force
-        if control_input < 0:
-            parafoil.Left_TE = TE + -abs(_check_control(minimum_conditions.r_traj, minimum_conditions.heading[index], parafoil_dynamics.pos, [minimum_conditions.arc_centers[1][0], -1*minimum_conditions.arc_centers[1][1]], -1))
-            parafoil.Right_TE = 0
-            parafoil.bank = -minimum_conditions.sigma_max
-        elif control_input > 0:
-            parafoil.Left_TE = 0
-            parafoil.Right_TE = TE + abs(_check_control(minimum_conditions.r_traj,  minimum_conditions.heading[index], parafoil_dynamics.pos, minimum_conditions.arc_centers[0], 1))
+        if control_input != 0:
+            TE_deflection.update_history(-control_input*TE + Control_Input.history[-1])
+            parafoil.TE_DEF = TE_deflection.history[-1]
             parafoil.bank = minimum_conditions.sigma_max
         else:
-            parafoil.Left_TE = 0
-            parafoil.Right_TE = 0
-            parafoil.bank = 0
+            TE_deflection.update_history(Control_Input.history[-1])
+            parafoil.TE_DEF = TE_deflection.history[-1]
 
     #update quaternion and gravity matrix
     parafoil_attitude.omega = parafoil._Parafoil_Control(parafoil_dynamics.turn_vel)
@@ -114,35 +124,37 @@ while start or pos_z.history[-1] > 0:
     parafoil_dynamics.update_dynamics(parafoil_attitude._rot_b_v())
     parafoil_dynamics._next_time_step()
 
+    '''
+    Continue on this
+    if error_time.history[-1] > 30:
+        error_time.update_history(0)
+        parafoil_dynamics.acc = np.array([0,0,0])
+        calc_dubin = True 
+        parafoil.TE_DEF = 0
+        parafoil.bank = 0
+        TE_deflection.update_history(0)'''
 
     if sqrt(parafoil_dynamics.acc.dot(parafoil_dynamics.acc)) < .5 and calc_dubin:
         #calculate maximum bank angle during turn
-        parafoil.Left_TE = pi/2
-        sigma_maxx = np.arcsin(sqrt(parafoil_dynamics.vel_mag * parafoil._Parafoil_Control(parafoil_dynamics.vel_mag)[2]/ 9.81))
-        parafoil.Left_TE = 0
+        TE_temp = pi/2
+        sigma_maxx = np.arctan2(sqrt(parafoil_dynamics.vel_mag * parafoil_dynamics.vel_mag * 0.71 * TE_temp), sqrt(9.81 * parafoil.b))
 
         #set current position to x,y zero in the reference system
-        parafoil_dynamics.pos = np.array([0,0,parafoil_dynamics.pos[2]])
+        #parafoil_dynamics.pos = np.array([0,0,parafoil_dynamics.pos[2]])
 
         #calculate trajectory
-        minimum_conditions = _All_Dubin_Paths(pos_init=np.array([0,0,0]), 
-        pos_final=np.array([100,100,pi/2]), 
+        minimum_conditions = _All_Dubin_Paths(pos_init=np.array([parafoil_dynamics.pos[0],parafoil_dynamics.pos[1],parafoil_attitude.psi]), 
+        pos_final=np.array([200,200,-pi/2]), 
         altitude=parafoil_dynamics.pos[2],sigma_max=sigma_maxx,
         v_g=parafoil_dynamics.vel_mag,
         gamma_g_traj=parafoil_dynamics.gamma)
         minimum_conditions._Minimum_Tau()
         
         #initiate control
-        TE = math.cos(parafoil_dynamics.gamma)*parafoil.b/(0.71*minimum_conditions.r_traj) #parafoil.b * 9.81 *np.sin(minimum_conditions.sigma_max)/(0.71*(minimum_conditions.v_min)**2*np.cos(parafoil_dynamics.gamma))
-        print(minimum_conditions.chosen_traj)
-        print(minimum_conditions.arc_centers)
-        print(minimum_conditions.r_traj)
+        TE = abs(math.cos(parafoil_dynamics.gamma)*parafoil.b/(0.71*minimum_conditions.r_traj))
 
-        print(minimum_conditions.sigma_max)
-        parafoil.Left_TE = TE
-        print(np.arcsin(parafoil_dynamics.vel_mag**2*math.cos(parafoil_dynamics.gamma)*0.71*TE/(9.81*parafoil.b)))
-        parafoil.Left_TE = 0
         controls = True
+        print(minimum_conditions.chosen_traj)
         calc_dubin = False
 
 
@@ -169,25 +181,39 @@ while start or pos_z.history[-1] > 0:
 
 #parafoil._Calc_Alpha_Trim(0.02)
 
-fig = plt.figure()
+#fig = plt.figure()
 
 #alpa.plot(None, None, "y", alpa.var_name, False)
 pos_x.plot(pos_y.history, None, "x", pos_y.var_name, True)
 error_time.plot(None, None, "x", None, False)
+#plt.plot(minimum_conditions.heading)
+plt.plot(minimum_conditions.pos_x, minimum_conditions.pos_y)
+Control_Input.plot(None, None, "x", None, False)
+
 #pos_z.plot(pos_x.history, None, "y", pos_x.var_name, True)
 #vel_x.plot(None, None, "y", vel_x.var_name, False)
 #vel_y.plot(None, None, "y", vel_y.var_name)
 #vel_z.plot(None, None, "y", vel_z.var_name, False)
-#force_x.plot(None, None, "y", force_x.var_name, False)
-#force_z.plot(None, None, "y", force_z.var_name, False)
 
-'''
+
 fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-ax.scatter3D(pos_x.history, pos_y.history, pos_z.history, c=pos_z.history, cmap='Greens');
+#ax = fig.add_subplot(111, projection='3d')
+#ax.scatter3D(pos_x.history, pos_y.history, pos_z.history, c=pos_z.history, cmap='Greens');
+#ax.scatter3D(minimum_conditions.pos_x, minimum_conditions.pos_y, minimum_conditions.alt, c=minimum_conditions.alt, cmap='Greens');
 #plt.savefig("First")
-'''
+
+f, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
+ax1.plot(pos_x.history, pos_y.history)
+ax1.plot(minimum_conditions.pos_x, minimum_conditions.pos_y)
+ax2.plot(error_time.history)
 plt.show()
 
-mm = 1
+plt.plot(pos_x.history, pos_z.history)
+plt.plot(minimum_conditions.pos_x, minimum_conditions.alt)
+plt.show()
+
+plt.plot(minimum_conditions.heading)
+plt.plot(Psi.history)
+
+plt.show()
     

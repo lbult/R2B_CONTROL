@@ -33,7 +33,6 @@ class ParafoilProperties():
         
         #airfoil properties
         self.a_0 = a_0*2*pi*self.AR*tanh(a_0/(2*pi*self.AR))/a_0 #reduction for LOW AR wing
-        #print(self.a_0)
         self.alpha_0 = alpha_0 #radians
         a = 0.03714, 1
         b = 0.14286, 5
@@ -52,8 +51,7 @@ class ParafoilProperties():
         self.Cdl = 0
 
         #control properties
-        self.Right_TE = 0
-        self.Left_TE = 0
+        self.TE_DEF = 0 
         self.bank = 0
 
         # initial condition for angle of attack
@@ -170,10 +168,8 @@ class ParafoilProperties():
         :return: yaw rate of the parafoil under turning, nparray(3)
         """
         #trailing edge deflection in radians
-        if self.Left_TE != 0 and self.Right_TE == 0:
-            return np.array([0,0, 0.71 * turn_velocity * self.Left_TE / self.b])
-        elif self.Right_TE != 0 and self.Left_TE == 0:
-            return np.array([0,0, -0.71 * turn_velocity * self.Right_TE / self.b])
+        if self.TE_DEF != 0:
+            return np.array([0,0, 0.71 * turn_velocity * self.TE_DEF / self.b])
         else:
             return np.array([0,0,0])
 
@@ -223,15 +219,15 @@ class Dynamics:
         #translational acceleration
         self.acc = self.forces * 1/self.mass
         self.vel = self.vel + self.acc * self.dt
-        self.pos = self.pos + self.vel_r*self.dt #+ 0.5 * (self.dt**2) * np.dot(np.matrix.transpose(rot_bv), self.acc)
-        
+        self.pos = self.pos + self.vel_r*self.dt 
+
         #reference system
-        self.vel_r = np.dot(np.transpose(rot_bv), self.vel) * np.array([1,1,-1])
+        self.vel_r = np.dot(np.transpose(rot_bv), self.vel) * -1
         self.vel_mag = np.sqrt(self.vel.dot(self.vel))
 
         #attitude
         self.gamma = np.arctan2(self.vel_r[2], sqrt(self.vel_r[0]**2+self.vel_r[1]**2))
-        self.turn_vel =  sqrt(self.vel_r[0]**2+self.vel_r[1]**2) #self.vel_mag * cos(self.gamma)
+        self.turn_vel =  sqrt(self.vel_r[0]**2+self.vel_r[1]**2)
 
     def _next_time_step(self):
         self.time += self.dt

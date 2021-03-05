@@ -237,19 +237,21 @@ class _All_Dubin_Paths():
                 else:
                     self._Remove_Path()
 
-
-
     def _Go_Left(self, rotate):
         x_i = self.pos_x[-1]
         y_i = self.pos_y[-1]
         this_heading = self.heading[-1]
-        dtheta = rotate/100
+        dtheta = rotate/1000
         self.arc_centers.append([x_i - self.r_traj*sin(this_heading), y_i + self.r_traj*cos(this_heading)])
         i = 0
-        while i < 100:
+        while i < 1000:
             self.pos_x.append(x_i - self.r_traj*sin(this_heading) + self.r_traj*sin(this_heading + dtheta*i))
             self.pos_y.append(y_i + self.r_traj*cos(this_heading) - self.r_traj*cos(this_heading + dtheta*i))
             self.heading.append(self.heading[-1]+dtheta)
+            if self.heading[-1]+dtheta > pi:
+                self.heading.append(-self.heading[-1]+dtheta)
+            else:
+                self.heading.append(self.heading[-1]+dtheta)
             self.alt.append(self.alt[-1]-abs(dtheta*self.r_traj*tan(self.gamma_traj)))
             self.control.append(-1)
             i += 1
@@ -257,22 +259,25 @@ class _All_Dubin_Paths():
     def _Go_Right(self, rotate):
         x_i = self.pos_x[-1]
         y_i = self.pos_y[-1]
-        dtheta = rotate/100 
+        dtheta = rotate/1000 
         this_heading = self.heading[-1]
         self.arc_centers.append([x_i + self.r_traj*sin(this_heading), y_i - self.r_traj*cos(this_heading)])
         i = 0
-        while i < 100:
+        while i < 1000:
             self.pos_x.append(x_i + self.r_traj*sin(this_heading) - self.r_traj*sin(this_heading - dtheta*i))
             self.pos_y.append(y_i - self.r_traj*cos(this_heading) + self.r_traj*cos(this_heading - dtheta*i))
-            self.heading.append(self.heading[-1]-dtheta)
+            if self.heading[-1]-dtheta < -pi:
+                self.heading.append(-self.heading[-1]-dtheta)
+            else:
+                self.heading.append(self.heading[-1]-dtheta)
             self.alt.append(self.alt[-1]-abs(dtheta*self.r_traj*tan(self.gamma_traj)))
             self.control.append(1)
             i += 1
 
     def _Straight(self, length):
-        dlength = length/100
+        dlength = length/1000
         i = 0
-        while i < 100:
+        while i < 1000:
             self.pos_x.append(self.pos_x[-1]+dlength*cos(self.heading[-1]))
             self.pos_y.append(self.pos_y[-1]+dlength*sin(self.heading[-1]))
             self.heading.append(self.heading[-1])
