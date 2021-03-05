@@ -26,15 +26,19 @@ class _All_Dubin_Paths():
         self.tau_rsr = 0
         self.tau_lsr = 0
         self.tau_lsl = 0
+        self.tau_rlr = 0
+        self.tau_lrl = 0
         
         self.tau_min = 0
         self.eta = 0
         
-        #initiate lengths for all sections
+        #initiate all lengths t, p, q
         self.rsl_traj = np.array([0,0,0])
         self.rsr_traj = np.array([0,0,0])
         self.lsr_traj = np.array([0,0,0])
         self.lsl_traj = np.array([0,0,0])
+        self.rlr_traj = np.array([0,0,0])
+        self.lrl_traj = np.array([0,0,0])
 
         self.chosen_traj = np.array([0,0,0])
 
@@ -52,7 +56,6 @@ class _All_Dubin_Paths():
         self.heading = [0]
         self.alt = [altitude]
         self.control = [0]
-        self.arc_centers = []
 
     def _RSL(self):
         try:
@@ -129,7 +132,7 @@ class _All_Dubin_Paths():
         self._RSR()
         self._LSL()
         min_array = [self.tau_rsl,self.tau_rsr,self.tau_lsr,self.tau_lsl]
-        print(min_array, "min_array")
+        # print(min_array, "<--min_array")
         min_arrays = []
         for taus in min_array:
             if taus != 0:
@@ -138,14 +141,15 @@ class _All_Dubin_Paths():
         self.tau_min = min(min_arrays)
         tau_place = min_array.index(self.tau_min)
         tau_full = abs(2*pi*self.r_traj*tan(self.gamma_traj))
+
         
         self.eta = (self.altitude - self.tau_min)/tau_full
-        print(self.eta, "eta")
+        # print(self.eta, "<--eta")
 
         iteration_1 = True
-        not_converged=True
-        tau_place=0
-
+        not_converged = True
+        tau_place = 0
+        # print(self.lsr_traj, "<--lsr_traj")
         while not_converged and self.eta > 0:
             
             if self.sigma_max> 0:
@@ -166,7 +170,7 @@ class _All_Dubin_Paths():
 
             if iteration_1:
                 if tau_place == 0:
-                    self._RSL()
+                    self._RSL() # i dont think that these dubin paths need to be reinitialized everytime right?
                     #self.pos_final = np.array([self.pos_final[1], -self.pos_final[0], self.pos_final[2] - pi/2])
                     self._Go_Right(self.rsl_traj[0])
                     self._Straight(self.rsl_traj[1])
@@ -237,21 +241,22 @@ class _All_Dubin_Paths():
                 else:
                     self._Remove_Path()
 
+
+        self.pos_xs_w, self.pos_ys_w = self._Wind_coordinate_Transform(self.pos_xs, self.pos_ys, self.alt)
+        self.pos_x_w, self.pos_y_w = self._Wind_coordinate_Transform(self.pos_x, self.pos_y, self.alt)
+
+
+
     def _Go_Left(self, rotate):
         x_i = self.pos_x[-1]
         y_i = self.pos_y[-1]
         this_heading = self.heading[-1]
-        dtheta = rotate/1000
-        self.arc_centers.append([x_i - self.r_traj*sin(this_heading), y_i + self.r_traj*cos(this_heading)])
+        dtheta = rotate/100
         i = 0
-        while i < 1000:
+        while i < 100:
             self.pos_x.append(x_i - self.r_traj*sin(this_heading) + self.r_traj*sin(this_heading + dtheta*i))
             self.pos_y.append(y_i + self.r_traj*cos(this_heading) - self.r_traj*cos(this_heading + dtheta*i))
             self.heading.append(self.heading[-1]+dtheta)
-            if self.heading[-1]+dtheta > pi:
-                self.heading.append(-self.heading[-1]+dtheta)
-            else:
-                self.heading.append(self.heading[-1]+dtheta)
             self.alt.append(self.alt[-1]-abs(dtheta*self.r_traj*tan(self.gamma_traj)))
             self.control.append(-1)
             i += 1
@@ -259,25 +264,23 @@ class _All_Dubin_Paths():
     def _Go_Right(self, rotate):
         x_i = self.pos_x[-1]
         y_i = self.pos_y[-1]
-        dtheta = rotate/1000 
+        dtheta = rotate/100 
         this_heading = self.heading[-1]
-        self.arc_centers.append([x_i + self.r_traj*sin(this_heading), y_i - self.r_traj*cos(this_heading)])
         i = 0
-        while i < 1000:
+        while i < 100:
             self.pos_x.append(x_i + self.r_traj*sin(this_heading) - self.r_traj*sin(this_heading - dtheta*i))
             self.pos_y.append(y_i - self.r_traj*cos(this_heading) + self.r_traj*cos(this_heading - dtheta*i))
-            if self.heading[-1]-dtheta < -pi:
-                self.heading.append(-self.heading[-1]-dtheta)
-            else:
-                self.heading.append(self.heading[-1]-dtheta)
+            self.heading.append(self.heading[-1]-dtheta)
             self.alt.append(self.alt[-1]-abs(dtheta*self.r_traj*tan(self.gamma_traj)))
             self.control.append(1)
             i += 1
 
     def _Straight(self, length):
-        dlength = length/1000
+        #self.pos_x.append(self.pos_x[-1]+length*cos(self.heading[-1]))
+        #self.pos_y.append(self.pos_y[-1]+length*sin(self.heading[-1]))
+        dlength = length/100
         i = 0
-        while i < 1000:
+        while i < 100:
             self.pos_x.append(self.pos_x[-1]+dlength*cos(self.heading[-1]))
             self.pos_y.append(self.pos_y[-1]+dlength*sin(self.heading[-1]))
             self.heading.append(self.heading[-1])
@@ -291,7 +294,6 @@ class _All_Dubin_Paths():
         self.heading = [0]
         self.alt = [self.alt_init]
         self.control = [0]
-        self.arc_centers = []
 
     def _Wind_coordinate_Transform(self,x_list ,y_list, alt_list):
         x = np.array(x_list)
