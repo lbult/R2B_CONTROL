@@ -23,8 +23,8 @@ plt.plot(minimum_conditions.pos_xs, minimum_conditions.pos_ys, 'b')
 plt.plot(minimum_conditions.pos_x, minimum_conditions.pos_y, 'r')
 plt.plot(minimum_conditions.pos_x_w, minimum_conditions.pos_y_w, 'g')
 
-# print(minimum_conditions.pos_x)
-# print(minimum_conditions.pos_x_w)
+print(minimum_conditions.pos_y, "<--pos_x")
+print(minimum_conditions.pos_y_w, "<--pos_x_w")
 #print(minimum_conditions.heading)
 # print(minimum_conditions.alt)
 
