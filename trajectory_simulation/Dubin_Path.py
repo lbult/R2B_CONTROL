@@ -297,10 +297,10 @@ class _All_Dubin_Paths():
         self.arc_centers = []
 
     def _Wind_coordinate_Transform(self,x_list ,y_list, alt_list):
-        x = np.array(x_list)
-        y = np.array(y_list)
-        alt = np.array(alt_list)
-        kappa_g = 1/(self.v_g*sin(self.gamma_g_traj))
+        x = np.flip(np.array(x_list))
+        y = np.flip(np.array(y_list))
+        alt = np.flip(np.array(alt_list))
+        kappa_g = -1/(self.v_g*sin(self.gamma_g_traj))
 
         x_w = np.zeros(len(x))
         y_w = np.zeros(len(y))
@@ -312,11 +312,9 @@ class _All_Dubin_Paths():
             for j in range(i, len(x)):
                 if j < len(x)-2:
                     dtau = alt[j]-alt[j+1]
-                    print(alt[j], alt[j+1])
                     x_temp -= kappa_g*wind[0]*dtau
                     y_temp -= kappa_g*wind[1]*dtau
-            # print(x_temp)
             x_w[i] = x_temp
             y_w[i] = y_temp
 
-        return x_w, y_w
+        return np.flip(x_w), np.flip(y_w)
