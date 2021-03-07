@@ -3,6 +3,13 @@ from math import sin, cos
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 
+def takeClosest(myList, myNumber):
+    closest = myList[0]
+    for i in range(1, len(myList)):
+        if abs(myList[i] - myNumber) < closest:
+            closest = myList[i]
+    return closest
+
 
 class Quaternion():
     '''
