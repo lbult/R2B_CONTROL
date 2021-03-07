@@ -202,6 +202,10 @@ class Dynamics:
         self.vel = np.array([-17.8,0,6.25]) #body system
         self.acc = np.array([0,0,0]) #body system
 
+        #translational with noise added (Gaussian noise)
+        self.pos_noise = 0
+        self.vel_noise = 0
+
         #position, attitude log
         self.dt = dt
         self.time = 0
@@ -221,6 +225,15 @@ class Dynamics:
         self.vel = self.vel + self.acc * self.dt
         self.pos = self.pos + self.vel_r*self.dt 
 
+        #derive noisy state from model state
+        
+        #pos_noise has x,y noise from GPS error
+            #z noise from altitude sensor error
+        self.pos_noise = self.pos + np.array([np.random.normal(0,3.5),
+            np.random.normal(0,3.5), np.random.normal(0,1)])
+        self.vel_noise = self.vel + np.array([np.random.normal(0,3.5),
+        np.random.normal(0,3.5), 0])
+
         #reference system
         self.vel_r = np.dot(np.transpose(rot_bv), self.vel) * -1
         self.vel_mag = np.sqrt(self.vel.dot(self.vel))
@@ -235,30 +248,3 @@ class Dynamics:
     def reset(self):
         self.log = None
         self.time = 0
-
-
-class Wind():
-    '''
-    Class which sets up the wind coordinate system and wind field
-    '''
-    def __init__(self, w_x=2.0, w_y=2.0, dt=0.025):
-        self.wind_field = np.array([w_x, w_y, 0])
-        self.time = 0
-        self.dt = dt
-
-    def _Wind_Reference_System(self):
-        
-        return 
-    
-    '''
-    def _Varying(self):
-        Add variations with time or altitude?
-        Dryden Gust model?
-
-    def _Update_Wind_Field(self):
-        """
-        Update wind field and position of parafoil system within 
-         wind reference system
-        """
-        self.time += self.dt
-    '''

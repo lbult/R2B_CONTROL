@@ -68,7 +68,7 @@ class _All_Dubin_Paths():
             self.tau_rsl = abs((abs(phi_1)+abs(phi_2))*self.r_traj*tan(self.gamma_traj)) + abs( Ls * tan(self.gamma_g_traj))    
             self.rsl_traj = np.array([phi_1, Ls, phi_2])
         except:
-            print("Math Domain Error")
+            smth = "Math Domain Error"
 
 
     def _LSR(self):
@@ -86,7 +86,7 @@ class _All_Dubin_Paths():
             self.lsr_traj = np.array([phi_1, Ls, phi_2])
 
         except:
-            print("Math Domain Error")
+            smth = "Math Domain Error"
 
     def _LSL(self):
         try:
@@ -102,7 +102,7 @@ class _All_Dubin_Paths():
             self.lsl_traj = np.array([phi_1, Ls, phi_2])
         
         except:
-            print("Math Domain Error")
+            smth = "Math Domain Error"
 
     def _RSR(self):
         try:
@@ -119,7 +119,7 @@ class _All_Dubin_Paths():
             self.rsr_traj = np.array([phi_1, Ls, phi_2])
         
         except:
-            print("Math Domain Error")
+            smth = "Math Domain Error"
         
         
 
@@ -237,6 +237,9 @@ class _All_Dubin_Paths():
                 else:
                     self._Remove_Path()
 
+        self.pos_xs_w, self.pos_ys_w = self._Wind_coordinate_Transform(self.pos_xs, self.pos_ys, self.alt)
+        self.pos_x_w, self.pos_y_w = self._Wind_coordinate_Transform(self.pos_x, self.pos_y, self.alt)
+
     def _Go_Left(self, rotate):
         x_i = self.pos_x[-1]
         y_i = self.pos_y[-1]
@@ -298,7 +301,6 @@ class _All_Dubin_Paths():
         y = np.array(y_list)
         alt = np.array(alt_list)
         kappa_g = 1/(self.v_g*sin(self.gamma_g_traj))
-        # print(kappa_g)
 
         x_w = np.zeros(len(x))
         y_w = np.zeros(len(y))

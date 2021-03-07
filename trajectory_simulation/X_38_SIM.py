@@ -28,20 +28,24 @@ vel_x = Variable("Velocity [x]")
 vel_y = Variable("Velocity [y]")
 vel_z = Variable("Velocity [z]")
 
+#Noisy Data - Gaussian Noise with sensor standard deviation
+pos_x_noise = Variable("Noisy Position [x]")
+pos_y_noise = Variable("Noisy Position [y]")
+pos_z_noise = Variable("Noisy Position [z]")
+
+vel_x_noise = Variable("Noisy Velocity [x]")
+vel_y_noise = Variable("Noisy Velocity [y]")
+vel_z_noise = Variable("Noisy Velocity [z]")
+
+
+#Control code variables:
 error_time = Variable("Error")
 error_time.update_history(0)
-
 Desired_heading = Variable("Desired heading")
 Desired_heading.update_history(0)
-
 TE_deflection = Variable(var_name="TE Deflection", limit=math.pi / 2 )
-
 Control_Input = Variable(var_name="Control_Input", limit=0.5)
-
 Psi = Variable(var_name="psi")
-
-force_x = Variable("Drag [x]")
-force_z = Variable("Lift [z]")
 
 current_alt = 0
 
@@ -154,7 +158,6 @@ while start or pos_z.history[-1] > 0:
         TE = abs(math.cos(parafoil_dynamics.gamma)*parafoil.b/(0.71*minimum_conditions.r_traj))
 
         controls = True
-        print(minimum_conditions.chosen_traj)
         calc_dubin = False
 
 
@@ -171,37 +174,38 @@ while start or pos_z.history[-1] > 0:
     vel_y.update_history(parafoil_dynamics.vel_r[1])
     vel_z.update_history(parafoil_dynamics.vel_r[2])
 
-    #update force vars
-    force_x.update_history(Parafoil_Vector[2])
-    force_z.update_history(parafoil.Parafoil_Forces[2])
+    #update noisy variables
+    pos_x_noise.update_history(parafoil_dynamics.pos_noise[0])
+    pos_y_noise.update_history(parafoil_dynamics.pos_noise[1])
+    pos_z_noise.update_history(parafoil_dynamics.pos_noise[2])
+
+    vel_x_noise.update_history(parafoil_dynamics.vel_noise[0])
+    vel_y_noise.update_history(parafoil_dynamics.vel_noise[1])
+    vel_z_noise.update_history(parafoil_dynamics.vel_noise[2])
 
     #update counter
     ts+= 0.01
     start=False
 
-#parafoil._Calc_Alpha_Trim(0.02)
-
-#fig = plt.figure()
-
-#alpa.plot(None, None, "y", alpa.var_name, False)
 pos_x.plot(pos_y.history, None, "x", pos_y.var_name, True)
 error_time.plot(None, None, "x", None, False)
-#plt.plot(minimum_conditions.heading)
-plt.plot(minimum_conditions.pos_x, minimum_conditions.pos_y)
-Control_Input.plot(None, None, "x", None, False)
 
-#pos_z.plot(pos_x.history, None, "y", pos_x.var_name, True)
-#vel_x.plot(None, None, "y", vel_x.var_name, False)
-#vel_y.plot(None, None, "y", vel_y.var_name)
-#vel_z.plot(None, None, "y", vel_z.var_name, False)
-
+pos_x_noise.plot(None, None, "x", None, False)
+pos_y_noise.plot(None, None, "x", None, False)
+pos_z_noise.plot(None, None, "x", None, False)
+vel_x_noise.plot(None, None, "x", None, False)
+vel_y_noise.plot(None, None, "x", None, False)
+vel_z_noise.plot(None, None, "x", None, False)
 
 fig = plt.figure()
 #ax = fig.add_subplot(111, projection='3d')
 #ax.scatter3D(pos_x.history, pos_y.history, pos_z.history, c=pos_z.history, cmap='Greens');
 #ax.scatter3D(minimum_conditions.pos_x, minimum_conditions.pos_y, minimum_conditions.alt, c=minimum_conditions.alt, cmap='Greens');
 #plt.savefig("First")
-
+'''
+plt.plot(minimum_conditions.pos_x, minimum_conditions.pos_y)
+Control_Input.plot(None, None, "x", None, False)
+Plots for control:
 f, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
 ax1.plot(pos_x.history, pos_y.history)
 ax1.plot(minimum_conditions.pos_x, minimum_conditions.pos_y)
@@ -213,7 +217,7 @@ plt.plot(minimum_conditions.pos_x, minimum_conditions.alt)
 plt.show()
 
 plt.plot(minimum_conditions.heading)
-plt.plot(Psi.history)
+plt.plot(Psi.history)'''
 
 plt.show()
     
