@@ -11,17 +11,20 @@ from support import Quaternion, Variable, takeClosest
 from Dubin_Path import _All_Dubin_Paths
 from Control_Filter import _Controller
 
-'''
-#initiate board and define Servo's for TE deflection
-board = Arduino("9600", port="/dev/")
-Left_TE_Servo = board.Servos.attach()
-Right_TE_Servo = board.Servos.attach()
+# servo control 15.12.2016
+ 
+# 1) user set servo position in python
+# 2) position is sent to arduino
+# 3) arduino moves servo to position
+# 4) arduino send confirmation message back to python
+# 5) message is printed in python console
+ 
+import serial                                           # import serial library
+arduino = serial.Serial('/dev/cu.usbmodem14101', 9600)   # create serial object named arduino
+# servo control 15.12.2016
 
-#initiate Servo positions
-board.Servos.write(, 0)
-board.Servos.write(, 180)
-
-'''
+command = str(90)
+arduino.write(bytes(command, 'utf-8'))
 
 # 50 Hz refresh rate
 ts = 0.03033
@@ -64,6 +67,7 @@ Control_Input = Variable(var_name="Control_Input", limit=0.5)
 
 current_alt = 0
 sim_time = 0
+time_command = 0
 
 start = True
 controls = False
@@ -130,6 +134,12 @@ while start or pos_z.history[-1] > 0:
             TE_deflection.update_history(-control_input*TE + Control_Input.history[-1])
             parafoil.TE_DEF = TE_deflection.history[-1]
             parafoil.bank = minimum_conditions.sigma_max
+            if time.time() - time_command > .1:
+                command = str(TE_deflection.history[-1]*180/pi + 90)
+                arduino.write(bytes(command, 'utf-8'))
+                time_command = time.time()
+                print(command)
+            #reachedPos = str(arduino.readline().decode("utf-8"))
             '''
             if control_input < 0:
                 board.Servos.write(, 0+TE*180/pi)
@@ -173,10 +183,13 @@ while start or pos_z.history[-1] > 0:
     vel_z_noise.update_history(parafoil_dynamics.vel_noise[2])
 
     sim_time = ts + sim_time
-    print(sim_time)
+    #print(sim_time)
     
     if controls:
-        time.sleep(ts-(time.time()-current_time))
+        time.sleep(ts-(current_time-time.time()))
 
     #update counter
     start=False
+
+plt.plot(pos_x.history, pos_y.history)
+plt.show()
