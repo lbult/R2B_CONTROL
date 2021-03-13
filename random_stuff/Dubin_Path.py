@@ -240,6 +240,9 @@ class _All_Dubin_Paths():
                     not_converged = False
                 else:
                     self._Remove_Path()
+            else:
+                print("idk")
+                not_converged = False
 
 
         self.pos_xs_w, self.pos_ys_w = self._Wind_coordinate_Transform(self.pos_xs, self.pos_ys, self.alt)
@@ -296,6 +299,7 @@ class _All_Dubin_Paths():
         self.control = [0]
 
     def _Wind_coordinate_Transform(self,x_list ,y_list, alt_list):
+
         x = np.flip(np.array(x_list))
         y = np.flip(np.array(y_list))
         alt = np.flip(np.array(alt_list))
@@ -309,11 +313,18 @@ class _All_Dubin_Paths():
         for i in range(len(x)):
             x_temp = x[i]
             y_temp = y[i]
-            for j in range(i, len(x)):
-                if j < len(x)-2:
-                    dtau = alt[j]-alt[j+1]
-                    x_temp -= kappa_g*wind[0]*dtau
-                    y_temp -= kappa_g*wind[1]*dtau
+            for j in range(i, len(x)-1):
+                dtau = alt[j]-alt[j+1]
+                # simpson's rule of numerical integration
+                if j == i or j == len(x)-2:
+                    x_temp -= kappa_g * wind[0] * dtau / 3
+                    y_temp -= kappa_g * wind[1] * dtau / 3
+                elif j % 2 == 0:
+                    x_temp -= 4 * kappa_g * wind[0] * dtau / 3
+                    y_temp -= 4 * kappa_g * wind[1] * dtau / 3
+                elif j % 2 == 1:
+                    x_temp -= 2 * kappa_g * wind[0] * dtau / 3
+                    y_temp -= 2 * kappa_g * wind[1] * dtau / 3
             x_w[i] = x_temp
             y_w[i] = y_temp
 
