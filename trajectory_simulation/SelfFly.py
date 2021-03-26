@@ -61,10 +61,7 @@ class ParafoilProperties():
         self.ts = ts  # timestep
 
         # initialize apparent masses
-
         self.Parafoil_cloth_mass = 2.1*cloth_density*self.surface
-        #self._Apparent_Masses()
-        #self._Calc_Alpha_Trim(0.02)
 
 
     def _Calc_CG_height(self, payload_m):
@@ -87,8 +84,6 @@ class ParafoilProperties():
         Cm_1 = self.a*(xw+Cl0*Delta*zw)
         Cm_2 = Gamma*zw*self.a**2
 
-        #print(-Zl*self.Cdl + Zp*Cds)
-
         def f(x):
             return Cm_0 + Cm_1*x + Cm_2*x**2 +0.09-2.1298*x+22.7498*x**2-649.379*x**3+4915*x**4-10814.1*x**5
 
@@ -108,8 +103,6 @@ class ParafoilProperties():
                 x_tilde = x_tilde - f(x_tilde)/dfdx(x_tilde)
                 iteration += 1
             return x_tilde
-
-        print(Newton_method(7*pi/180)*180/pi)
 
         x = np.linspace(-pi/38, pi/18, 1000)
         y = np.zeros(1000)
