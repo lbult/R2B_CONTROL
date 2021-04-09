@@ -55,11 +55,10 @@ class ParafoilProperties():
         self.bank = 0
 
         # initial condition for angle of attack
-        self.alpa = 7.11/180 * pi
+        self.alpa = 6.385/180 * pi
         self.alpa_prime = 0
 
         self.ts = ts  # timestep
-
         # initialize apparent masses
         self.Parafoil_cloth_mass = 2.1*cloth_density*self.surface
 
@@ -68,7 +67,7 @@ class ParafoilProperties():
         self.cg_height_wrtpayload = (self.Parafoil_cloth_mass*self.R )/(self.Parafoil_cloth_mass+ payload_m)
         return self.cg_height_wrtpayload
     
-    def _Calc_Alpha_Trim(self, Cds):
+    def _Calc_Alpha_Trim(self, Cds, x_0):
         Xw, Zw, Zl, Zcg, Zp = self.c / 4, self.R * 0.02, self.R * 0.5, self.R - float(self._Calc_CG_height(9979)), self.R
         #normalise lengths
         Zl = Zl/self.c
@@ -96,13 +95,12 @@ class ParafoilProperties():
         def dfdx(x):
             return Cm_1 + 2*Cm_2*x - 2.1298+22.7498*2*x-3*649.379*x**2+4*4915*x**3-5*10814.1*x**4
         
-        def Newton_method(x_0):
-            iteration = 0
-            x_tilde = x_0
-            while iteration < 100:
-                x_tilde = x_tilde - f(x_tilde)/dfdx(x_tilde)
-                iteration += 1
-            return x_tilde
+        iteration = 0
+        x_tilde = x_0
+        while iteration < 100:
+            x_tilde = x_tilde - g(x_tilde)/dgdx(x_tilde)
+            iteration += 1
+            
 
         x = np.linspace(-pi/38, pi/18, 1000)
         y = np.zeros(1000)
@@ -113,6 +111,8 @@ class ParafoilProperties():
 
         plt.plot(x,y)
         plt.show()
+        return x_tilde
+
 
     def _Calc_Lift(self, alpha, velocity):
         """
@@ -143,9 +143,9 @@ class ParafoilProperties():
         k1 = (3.33-1.33*self.AR) #for 1 < alpha < 2.5
         delta_cd = k1*sin(alpha+self.rigging-self.alpha_0)**3
         self.Cdl = self.line_n*self.R*self.line_d*cos(alpha)**3/self.surface
-        Cd = delta_cd + self.Cd_0 + (1+self.delta) * self.Cl**2 / (pi * self.AR) + self.Cdl 
+        self.Cd = delta_cd + self.Cd_0 + (1+self.delta) * self.Cl**2 / (pi * self.AR) + self.Cdl 
         
-        return -0.5 * density * Cd * self.surface * sqrt(velocity.dot(velocity)) * velocity
+        return -0.5 * density * self.Cd * self.surface * sqrt(velocity.dot(velocity)) * velocity
 
     def _Parafoil_Forces_Moments(self, vel):
         """

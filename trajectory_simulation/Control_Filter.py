@@ -35,5 +35,3 @@ def _Controller(desired_heading, actual_position,
     control_var.update_history(kp * e + kd * de_dt)
     error_var.update_history(e)
     return
-
-def

@@ -4,10 +4,11 @@ from math import pi, sqrt, asin
 from matplotlib import pyplot as plt
 
 #import different support files
-import SelfFly
-import support
-import Dubin_Path
-import Control_Filter
+from SelfFly import ParafoilProperties, Dynamics, Payload
+from support import Quaternion, Variable, takeClosest
+from Dubin_Path import _All_Dubin_Paths
+from Control_Filter import _Controller
+
 
 ts = 0.02
 #define parafoil-payload system properties
@@ -46,6 +47,8 @@ Desired_heading.update_history(0)
 TE_deflection = Variable(var_name="TE Deflection", limit=math.pi / 2 )
 Control_Input = Variable(var_name="Control_Input", limit=0.5)
 
+print(parafoil._Calc_Alpha_Trim(0.02, 7*pi/180))
+
 current_alt = 0
 
 start = True
@@ -61,10 +64,11 @@ while start or pos_z.history[-1] > 0:
             parafoil_dynamics.pos[2]*2))
         control_input = minimum_conditions.control[index]
         
-        _check_control(minimum_conditions.heading[index], 
+        _Controller(minimum_conditions.heading[index], 
         parafoil_dynamics.pos, minimum_conditions.pos_x[index],  
         minimum_conditions.pos_y[index], parafoil_attitude.psi,
-        error_time, Control_Input)
+        error_time, Control_Input, Desired_heading,
+        parafoil_dynamics)
 
         Desired_heading.update_history(minimum_conditions.heading[index])
 
@@ -148,6 +152,7 @@ while start or pos_z.history[-1] > 0:
     vel_y_noise.update_history(parafoil_dynamics.vel_noise[1])
     vel_z_noise.update_history(parafoil_dynamics.vel_noise[2])
 
+    print(parafoil.Cl/parafoil.Cd)
     #update counter
     ts+= 0.01
     start=False
