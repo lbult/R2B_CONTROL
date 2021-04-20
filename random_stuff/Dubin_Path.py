@@ -36,13 +36,15 @@ class _All_Dubin_Paths():
         self.r_traj = (self.v_min)**2 * cos(self.gamma_traj) / (9.81* tan(self.sigma_max))
 
         #wind field characteristics & monte carlo analysis
+        weibull_shape = 2.2
         self.numb = monte_carlo
-        heading_sigma = 5   ## standard deviation of wing heading angle in degrees
-        speed_sigma = 0.1   ## standard deviation of wind speed in meters per second
+        heading_sigma = 9   ## standard deviation of wing heading angle in degrees
         wind_heading_distribution = np.random.normal(wind_direction, heading_sigma, self.numb)
         self.wind_vector_distribution = np.array([np.sin(np.pi*wind_heading_distribution/180), np.cos(np.pi*wind_heading_distribution/180)])
         self.wind_vector_distribution[0][0], self.wind_vector_distribution[1][0] = np.sin(np.pi*wind_direction/180), np.cos(np.pi*wind_direction/180)
-        self.wind_speed_distribution = np.random.normal(wind_magnitude, speed_sigma, self.numb)
+        self.wind_vector_distribution = self.wind_vector_distribution.transpose()
+
+        self.wind_speed_distribution = wind_magnitude * np.random.weibull(weibull_shape, self.numb)
         self.wind_speed_distribution[0] = wind_magnitude
 
         count, bins, ignored = plt.hist(self.wind_speed_distribution, 30, density=True)
@@ -56,7 +58,6 @@ class _All_Dubin_Paths():
         plt.xlabel("heading [degree]")
         plt.title("Wind vector distribution")
         plt.show()
-
 
         #initiate the cost of all paths
         self.tau_rsl = 0
@@ -278,7 +279,7 @@ class _All_Dubin_Paths():
             else:
                 print("idk")
                 not_converged = False
-        # self.pos_xs_w, self.pos_ys_w = self._Wind_coordinate_Transform(self.pos_xs, self.pos_ys, self.alt)
+        self.pos_xs_w, self.pos_ys_w = self._Wind_coordinate_Transform(self.pos_xs, self.pos_ys, self.alt)
         self.pos_x_w, self.pos_y_w = self._Wind_coordinate_Transform(self.pos_x, self.pos_y, self.alt)
 
     def _Go_Left(self, rotate):
@@ -330,11 +331,13 @@ class _All_Dubin_Paths():
         self.control = [0]
 
     def _Wind_Vector_Field(self, z, wind, wind_vector):
-        k = 0.3
+        vind_vector = wind_vector.transpose()
+        k = 0.3     ## exponent factor that changes the uniformity of wind speeds at higher altitudes
+        # print(wind/np.log((10**k)/10+1)*np.log((z**k)/10+1)*vind_vector, "<-really bad botching")
         if z <= 0:
-            return wind/np.log((10**k)/10+1)*np.log((0**k)/10+1)*wind_vector
+            return (wind/np.log((10**k)/10+1)*np.log((0**k)/10+1)*vind_vector)
         else:
-            return wind / np.log((10 ** k) / 10 + 1) * np.log((z ** k) / 10 + 1) * wind_vector
+            return (wind / np.log((10 ** k) / 10 + 1) * np.log((z ** k) / 10 + 1) * vind_vector)
 
     def _Wind_coordinate_Transform(self, x_list, y_list, alt_list):
 
@@ -343,36 +346,34 @@ class _All_Dubin_Paths():
         alt = np.flip(np.array(alt_list))
         kappa_g = -1/(self.v_g*sin(self.gamma_g_traj))
 
-        x_w = np.zeros((self.numb, len(x)))
-        y_w = np.zeros((self.numb, len(y)))
+        x_w = np.zeros((len(x), self.numb))
+        y_w = np.zeros((len(y), self.numb))
 
         tic = timeit.default_timer()
 
         print(f"Calculating monte carlo simulations for {len(self.wind_speed_distribution)} rounds of iterations...")
-        for k in range(len(self.wind_speed_distribution)):
-            w_vector_k = np.array([self.wind_vector_distribution[0][k], self.wind_vector_distribution[1][k]])
-            w_speed_k = self.wind_speed_distribution[k]
-            for i in range(len(x)):
-                x_temp = x[i]
-                y_temp = y[i]
-                for j in range(i, len(x)-1):
-                    dtau = alt[j]-alt[j+1]
-                    wind = self._Wind_Vector_Field(alt[j], w_speed_k, w_vector_k)
-                    # simpson's rule of numerical integration
-                    if j == i or j == len(x)-2:
-                        x_temp -= kappa_g * wind[0] * dtau / 3
-                        y_temp -= kappa_g * wind[1] * dtau / 3
-                    elif j % 2 == 0:
-                        x_temp -= 4 * kappa_g * wind[0] * dtau / 3
-                        y_temp -= 4 * kappa_g * wind[1] * dtau / 3
-                    elif j % 2 == 1:
-                        x_temp -= 2 * kappa_g * wind[0] * dtau / 3
-                        y_temp -= 2 * kappa_g * wind[1] * dtau / 3
+        w_vector_k = self.wind_vector_distribution
+        w_speed_k = self.wind_speed_distribution
+        for i in range(len(x)):
+            x_temp = x[i]
+            y_temp = y[i]
+            for j in range(i, len(x) - 1):
+                dtau = alt[j] - alt[j + 1]
+                wind = self._Wind_Vector_Field(alt[j], w_speed_k, w_vector_k)
+                # simpson's rule of numerical integration
+                if j == i or j == len(x) - 2:
+                    x_temp -= kappa_g * wind[0] * dtau / 3
+                    y_temp -= kappa_g * wind[1] * dtau / 3
+                elif j % 2 == 0:
+                    x_temp -= 4 * kappa_g * wind[0] * dtau / 3
+                    y_temp -= 4 * kappa_g * wind[1] * dtau / 3
+                elif j % 2 == 1:
+                    x_temp -= 2 * kappa_g * wind[0] * dtau / 3
+                    y_temp -= 2 * kappa_g * wind[1] * dtau / 3
+            x_w[i] = x_temp
+            y_w[i] = y_temp
 
-                x_w[k][i] = x_temp
-                y_w[k][i] = y_temp
 
         toc = timeit.default_timer()
-
         print(f'monte carlo time = {toc-tic}')
-        return np.flip(x_w), np.flip(y_w)
+        return np.flip(x_w).transpose(), np.flip(y_w).transpose()
