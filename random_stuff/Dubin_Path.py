@@ -46,9 +46,15 @@ class _All_Dubin_Paths():
         self.wind_speed_distribution[0] = wind_magnitude
 
         count, bins, ignored = plt.hist(self.wind_speed_distribution, 30, density=True)
+        plt.ylabel("frequency")
+        plt.xlabel("speed [m/s]")
+        plt.title("Wind speed distribution")
         plt.show()
         plt.cla()
         count, bins, ignored = plt.hist(wind_heading_distribution, 30, density=True)
+        plt.ylabel("frequency")
+        plt.xlabel("heading [degree]")
+        plt.title("Wind vector distribution")
         plt.show()
 
 
@@ -272,7 +278,7 @@ class _All_Dubin_Paths():
             else:
                 print("idk")
                 not_converged = False
-        self.pos_xs_w, self.pos_ys_w = self._Wind_coordinate_Transform(self.pos_xs, self.pos_ys, self.alt)
+        # self.pos_xs_w, self.pos_ys_w = self._Wind_coordinate_Transform(self.pos_xs, self.pos_ys, self.alt)
         self.pos_x_w, self.pos_y_w = self._Wind_coordinate_Transform(self.pos_x, self.pos_y, self.alt)
 
     def _Go_Left(self, rotate):
@@ -342,13 +348,16 @@ class _All_Dubin_Paths():
 
         tic = timeit.default_timer()
 
+        print(f"Calculating monte carlo simulations for {len(self.wind_speed_distribution)} rounds of iterations...")
         for k in range(len(self.wind_speed_distribution)):
+            w_vector_k = np.array([self.wind_vector_distribution[0][k], self.wind_vector_distribution[1][k]])
+            w_speed_k = self.wind_speed_distribution[k]
             for i in range(len(x)):
                 x_temp = x[i]
                 y_temp = y[i]
                 for j in range(i, len(x)-1):
                     dtau = alt[j]-alt[j+1]
-                    wind = self._Wind_Vector_Field(alt[j], self.wind_speed_distribution[k], np.array([self.wind_vector_distribution[0][k], self.wind_vector_distribution[1][k]]))
+                    wind = self._Wind_Vector_Field(alt[j], w_speed_k, w_vector_k)
                     # simpson's rule of numerical integration
                     if j == i or j == len(x)-2:
                         x_temp -= kappa_g * wind[0] * dtau / 3

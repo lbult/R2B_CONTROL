@@ -16,7 +16,7 @@ sigma = pi/6
 
 minimum_conditions = _All_Dubin_Paths(pos_init=initial_conditions, 
         pos_final=final_conditions, gamma_g_traj = gamma_g, altitude=init_height, v_g=V_g, sigma_max=sigma,
-        wind_direction=45, wind_magnitude=0.3, monte_carlo=120)
+        wind_direction=12, wind_magnitude=0.4, monte_carlo=100)
 
 minimum_conditions._Minimum_Tau()
 
@@ -27,13 +27,13 @@ plt.plot(minimum_conditions.pos_x_w[0], minimum_conditions.pos_y_w[0], 'g', alph
 
 for i in range(len(minimum_conditions.pos_x_w)):
         ## plotting the land_fall coordinates of the parafoil after monte carlo
-        plt.scatter(minimum_conditions.pos_x_w[i][-1], minimum_conditions.pos_y_w[i][-1], c='r', alpha=0.3)
+        plt.scatter(minimum_conditions.pos_x_w[i][-1], minimum_conditions.pos_y_w[i][-1], c='r', alpha=0.01)
         # plt.scatter(minimum_conditions.pos_x_ws[i][-1], minimum_conditions.pos_y_ws[i][-1], c='r', alpha=0.3)
 
 # print(minimum_conditions.pos_x_w, minimum_conditions.pos_y_w)
 # print(minimum_conditions.pos_y, "<--pos_x")
 # print(minimum_conditions.pos_y_w, "<--pos_x_w")
-#print(minimum_conditions.heading)
+# print(minimum_conditions.heading)
 # print(minimum_conditions.alt)
 
 plt.gca().set_aspect('equal', adjustable='box')
