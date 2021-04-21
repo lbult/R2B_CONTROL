@@ -24,8 +24,14 @@ def _Controller(desired_heading, actual_position,
     #+ factor*dphi#(desired_radius - actual_radius)*math.cos(desired_heading)
 
     #set PD gains, integral term not necessary
+    
+    ''' X-38 Kalman Gains
     kp = 0.012
-    kd = 0.0665
+    kd = 0.0665'''
+
+    #Drop test PD Gains
+    kp = 0.026
+    kd = 0.04
     
     #define proportional and derivate error
     e = dx*math.sin(desired_heading) - dy*math.cos(desired_heading)

@@ -6,7 +6,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits import mplot3d
 
 density = 1.225 #kg/m^3
-cloth_density = 0.0678  # kg/m**2
+cloth_density = 0.048  # kg/m**2 for ripstop nylon
 
 def _Skew_Symmetric_Operator(vector_to_skew):
     return np.array([[0,-vector_to_skew[2],vector_to_skew[1]],
@@ -14,7 +14,8 @@ def _Skew_Symmetric_Operator(vector_to_skew):
                 [-vector_to_skew[1],vector_to_skew[0],0]])
 
 class ParafoilProperties():
-    def __init__(self, alpha_0=0, a_0=2*pi, b=43.6, surface=5, Cd0=0.01, delta=0.02, rigging=0, m=10, R=70.3, line_n=697, line_d=2.5, thickness=0.4, ts=0.025):
+    def __init__(self, alpha_0=0, a_0=2*pi, b=43.6, surface=5, Cd0=0.01, delta=0.02, 
+        rigging=0, m=10, R=70.3, line_n=697, line_d=2.5, thickness=0.4, ts=0.025):
         #parameters set for thin airfoil theory (see DARE-PRG_R2B Report and Anderson)
         self.Parafoil_Forces = np.array([0,0,0])
         self.Parafoil_Moments = np.array([0,0,0])
@@ -55,7 +56,7 @@ class ParafoilProperties():
         self.bank = 0
 
         # initial condition for angle of attack
-        self.alpa = 6.385/180 * pi
+        self.alpa = 3.678/180 * pi
         self.alpa_prime = 0
 
         self.ts = ts  # timestep
@@ -68,7 +69,7 @@ class ParafoilProperties():
         return self.cg_height_wrtpayload
     
     def _Calc_Alpha_Trim(self, Cds, x_0):
-        Xw, Zw, Zl, Zcg, Zp = self.c / 4, self.R * 0.02, self.R * 0.5, self.R - float(self._Calc_CG_height(9979)), self.R
+        Xw, Zw, Zl, Zcg, Zp = self.c / 4, self.R * 0.02, self.R * (1-0.68), self.R - float(self._Calc_CG_height(2.0)), self.R
         #normalise lengths
         Zl = Zl/self.c
         Zp = Zp/self.c
@@ -125,10 +126,12 @@ class ParafoilProperties():
         :return: lift force of the parafoil, normal to chord (Fn), vertical in vehicle axis system, nparray(3)
         """
         #alpha in radians
-        k1 = (3.33-1.33*self.AR) #for 1 < alpha < 2.5
-        delta_cl = k1*(sin(alpha-self.alpha_0)**2)*cos(alpha-self.alpha_0)
+        if (3.33-1.33*self.AR) > 0:
+            k1 = (3.33-1.33*self.AR) #for 1 < alpha < 2.5
+            delta_cl = k1*(sin(alpha-self.alpha_0)**2)*cos(alpha-self.alpha_0)
+        else:
+            delta_cl = 0
         self.Cl = self.a * (alpha+self.rigging-self.alpha_0) * cos(self.anhedral)**2 + delta_cl
-        
         return 0.5 * density * self.Cl * self.surface * np.array([-velocity[2], 0, velocity[0]*cos(self.bank)]) * sqrt(velocity[2]**2 + velocity[0]**2)
  
     def _Calc_Drag(self, alpha, velocity):
@@ -140,11 +143,14 @@ class ParafoilProperties():
         :return: drag force of the parafoil, horizontal in vehicle axis system, nparray(3)
         """
         #add payload and line drag contribution
-        k1 = (3.33-1.33*self.AR) #for 1 < alpha < 2.5
-        delta_cd = k1*sin(alpha+self.rigging-self.alpha_0)**3
+        if (3.33-1.33*self.AR) > 0:
+            k1 = (3.33-1.33*self.AR) #for 1 < alpha < 2.5
+            delta_cd = k1*sin(alpha+self.rigging-self.alpha_0)**3
+        else:
+            delta_cd = 0
         self.Cdl = self.line_n*self.R*self.line_d*cos(alpha)**3/self.surface
         self.Cd = delta_cd + self.Cd_0 + (1+self.delta) * self.Cl**2 / (pi * self.AR) + self.Cdl 
-        
+        self.Cd = self.Cl/3 #drag way too low for parafoil drop test
         return -0.5 * density * self.Cd * self.surface * sqrt(velocity.dot(velocity)) * velocity
 
     def _Parafoil_Forces_Moments(self, vel):
@@ -188,11 +194,11 @@ class Payload():
         return -0.5 * density * self.payload_cd * velocity * sqrt(velocity.dot(velocity)) * np.array([-1,1,1])
 
 class Dynamics:
-    def __init__(self, dt=0.025, mass=10, pos=np.array([0,0,500])):
+    def __init__(self, dt=0.025, mass=10, pos=np.array([0,0,120])):
         #translational
         self.pos = pos #reference system
         self.vel_r = np.array([0,0,0]) # reference system
-        self.vel = np.array([-17.8,0,6.25]) #body system
+        self.vel = np.array([-11.8,0,3.2]) #body system, X-38: -17.8,0,6.25
         self.acc = np.array([0,0,0]) #body system
 
         #translational with noise added (Gaussian noise)
