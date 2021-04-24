@@ -14,7 +14,7 @@ def _Skew_Symmetric_Operator(vector_to_skew):
                 [-vector_to_skew[1],vector_to_skew[0],0]])
 
 class ParafoilProperties():
-    def __init__(self, alpha_0=0, a_0=2*pi, b=43.6, surface=5, Cd0=0.01, delta=0.02, 
+    def __init__(self, alpha_0=0, a_0=2*pi, b=43.6, surface=5, Cd0=0.1, delta=0.02,
         rigging=0, m=10, R=70.3, line_n=697, line_d=2.5, thickness=0.4, ts=0.025):
         #parameters set for thin airfoil theory (see DARE-PRG_R2B Report and Anderson)
         self.Parafoil_Forces = np.array([0,0,0])
@@ -30,7 +30,7 @@ class ParafoilProperties():
         self.rigging = rigging*pi/180
         self.m = m
         self.t = thickness
-        self.c = surface/b # TODO review this later, chord is calculated as surface area divided by span?, so basically assumes shape of parafoil?
+        self.c = surface/b
         
         #airfoil properties
         self.a_0 = a_0*2*pi*self.AR*tanh(a_0/(2*pi*self.AR))/a_0 #reduction for LOW AR wing
@@ -131,7 +131,7 @@ class ParafoilProperties():
             delta_cl = k1*(sin(alpha-self.alpha_0)**2)*cos(alpha-self.alpha_0)
         else:
             delta_cl = 0
-        self.Cl = self.a * (alpha+self.rigging-self.alpha_0) * cos(self.anhedral)**2 + delta_cl
+        self.Cl = self.a * (alpha+self.rigging-self.alpha_0) + cos(self.anhedral) * delta_cl**2
         return 0.5 * density * self.Cl * self.surface * np.array([-velocity[2], 0, velocity[0]*cos(self.bank)]) * sqrt(velocity[2]**2 + velocity[0]**2)
  
     def _Calc_Drag(self, alpha, velocity):
@@ -149,8 +149,8 @@ class ParafoilProperties():
         else:
             delta_cd = 0
         self.Cdl = self.line_n*self.R*self.line_d*cos(alpha)**3/self.surface
-        self.Cd = delta_cd + self.Cd_0 + (1+self.delta) * self.Cl**2 / (pi * self.AR) + self.Cdl 
-        self.Cd = self.Cl/3 #drag way too low for parafoil drop test
+        term_3 = (1+self.delta) * (self.a * (alpha+self.rigging-self.alpha_0))**2 / (pi * self.AR)
+        self.Cd = delta_cd + self.Cd_0 + term_3 + self.Cdl
         return -0.5 * density * self.Cd * self.surface * sqrt(velocity.dot(velocity)) * velocity
 
     def _Parafoil_Forces_Moments(self, vel):

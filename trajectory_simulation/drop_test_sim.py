@@ -12,8 +12,8 @@ from Control_Filter import _Controller
 
 ts = 0.02
 #define parafoil-payload system properties
-parafoil = ParafoilProperties(m=0.1, alpha_0=(-1.1*pi/180), surface=1.09, 
-    a_0=6.03, Cd0=0.0088,rigging=10*pi/180, ts=ts, b=2.36, line_n=40, line_d=0.29,
+parafoil = ParafoilProperties(m=0.1, alpha_0=(-1.1*pi/180), surface=1.09,
+    a_0=6.03, Cd0=0.1,rigging=10*pi/180, ts=ts, b=2.36, line_n=40, line_d=0.29,
     R=1.2)
 mpayload = Payload(M=3.0,payload_cd=0.02)
 
