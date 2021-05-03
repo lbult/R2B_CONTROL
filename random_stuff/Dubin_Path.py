@@ -36,25 +36,25 @@ class _All_Dubin_Paths():
         self.r_traj = (self.v_min)**2 * cos(self.gamma_traj) / (9.81* tan(self.sigma_max))
 
         #wind field characteristics & monte carlo analysis
-        weibull_shape = 2.2
-        self.numb = monte_carlo
-        heading_sigma = 9   ## standard deviation of wing heading angle in degrees
-        wind_heading_distribution = np.random.normal(wind_direction, heading_sigma, self.numb)
-        self.wind_vector_distribution = np.array([np.sin(np.pi*wind_heading_distribution/180), np.cos(np.pi*wind_heading_distribution/180)])
-        self.wind_vector_distribution[0][0], self.wind_vector_distribution[1][0] = np.sin(np.pi*wind_direction/180), np.cos(np.pi*wind_direction/180)
-        self.wind_vector_distribution = self.wind_vector_distribution.transpose()
+        weibull_shape = 2.2 ## Setting the wind speed distribution parameters, a weibull distribution is the normal distribution but skewed to the lower end
+        self.monte_loops = monte_carlo
+        heading_sigma = 9   ## standard deviation of wind heading angle in degrees
+        wind_heading_distribution = np.random.normal(wind_direction, heading_sigma, self.monte_loops)
+        self.wind_vector_distribution = np.array([np.sin(np.pi*wind_heading_distribution/180), np.cos(np.pi*wind_heading_distribution/180)])            ## montecarlo, 2D array of wind headings, with monte_loops number of columns
+        self.wind_vector_distribution[0][0], self.wind_vector_distribution[1][0] = np.sin(np.pi*wind_direction/180), np.cos(np.pi*wind_direction/180)   ## simply setting the first wind heading to be the avg heading
 
-        self.wind_speed_distribution = wind_magnitude * np.random.weibull(weibull_shape, self.numb)
-        self.wind_speed_distribution[0] = wind_magnitude
+        self.wind_speed_distribution = wind_magnitude * np.random.weibull(weibull_shape, self.monte_loops)  ## montecarlo, 2D array of wind velocity magnitudes
+        self.wind_speed_distribution[0] = wind_magnitude    ## simply setting the first wind velocity to be the avg heading
 
+        #plotting all the montecarlo distribution stuff to give user info, remove if its annoying
         count, bins, ignored = plt.hist(self.wind_speed_distribution, 30, density=True)
-        plt.ylabel("frequency")
+        plt.ylabel("frequency (i think?)")
         plt.xlabel("speed [m/s]")
         plt.title("Wind speed distribution")
         plt.show()
         plt.cla()
         count, bins, ignored = plt.hist(wind_heading_distribution, 30, density=True)
-        plt.ylabel("frequency")
+        plt.ylabel("frequency (i think?)")
         plt.xlabel("heading [degree]")
         plt.title("Wind vector distribution")
         plt.show()
@@ -331,13 +331,18 @@ class _All_Dubin_Paths():
         self.control = [0]
 
     def _Wind_Vector_Field(self, z, wind, wind_vector):
-        vind_vector = wind_vector.transpose()
+        """
+
+        :param z:
+        :param wind:
+        :param wind_vector:
+        :return: i've implemented a form of log rule to make the wind velocity as a function of altitude, plot the return formula on desmos to see how the distribution looks like
+        """
         k = 0.3     ## exponent factor that changes the uniformity of wind speeds at higher altitudes
-        # print(wind/np.log((10**k)/10+1)*np.log((z**k)/10+1)*vind_vector, "<-really bad botching")
         if z <= 0:
-            return (wind/np.log((10**k)/10+1)*np.log((0**k)/10+1)*vind_vector)
+            return (wind/np.log((10**k)/10+1)*np.log((0**k)/10+1)*wind_vector)
         else:
-            return (wind / np.log((10 ** k) / 10 + 1) * np.log((z ** k) / 10 + 1) * vind_vector)
+            return (wind / np.log((10 ** k) / 10 + 1) * np.log((z ** k) / 10 + 1) * wind_vector)
 
     def _Wind_coordinate_Transform(self, x_list, y_list, alt_list):
 
@@ -346,11 +351,12 @@ class _All_Dubin_Paths():
         alt = np.flip(np.array(alt_list))
         kappa_g = -1/(self.v_g*sin(self.gamma_g_traj))
 
-        x_w = np.zeros((len(x), self.numb))
-        y_w = np.zeros((len(y), self.numb))
+        x_w = np.zeros((len(x), self.monte_loops))
+        y_w = np.zeros((len(y), self.monte_loops))
 
         tic = timeit.default_timer()
 
+        # performing the wind coordinate transform
         print(f"Calculating monte carlo simulations for {len(self.wind_speed_distribution)} rounds of iterations...")
         w_vector_k = self.wind_vector_distribution
         w_speed_k = self.wind_speed_distribution
@@ -370,6 +376,7 @@ class _All_Dubin_Paths():
                 elif j % 2 == 1:
                     x_temp -= 2 * kappa_g * wind[0] * dtau / 3
                     y_temp -= 2 * kappa_g * wind[1] * dtau / 3
+
             x_w[i] = x_temp
             y_w[i] = y_temp
 
