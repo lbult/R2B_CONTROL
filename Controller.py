@@ -19,13 +19,7 @@ def _Controller(desired_heading, actual_position,
     e_along = dx*math.cos(desired_heading) + dy*math.sin(desired_heading)  
     dphi_dt = (desired_heading - desired_heading_var.history[-1])/ts
     
-    #Possible robustness improvement
-    #actual_radius = sqrt(dx**2 + dy**2)
-    #+ factor*dphi#(desired_radius - actual_radius)*math.cos(desired_heading)
-
-    #set PD gains, integral term not necessary
-    
-    ''' X-38 Kalman Gains
+    ''' X-38 PD Gains
     kp = 0.012
     kd = 0.0665'''
 

@@ -4,17 +4,18 @@ from math import pi, sqrt, asin
 from matplotlib import pyplot as plt
 
 #import different support files
-from SelfFly import ParafoilProperties, Dynamics, Payload
+from Parafoil_Dynamics import ParafoilProperties, Dynamics, Payload
 from support import Quaternion, Variable, takeClosest
 from Dubin_Path import _All_Dubin_Paths
-from Control_Filter import _Controller
+from Controller import _Controller
 
 
 ts = 0.02
 #define parafoil-payload system properties
-parafoil = ParafoilProperties(m=635, alpha_0=(-3.5*pi/180), surface=697, 
-    a_0=6.41, Cd0=0.005,rigging=10*pi/180, ts=ts)
-mpayload = Payload(M=9979,payload_cd=0.02)
+parafoil = ParafoilProperties(m=0.1, alpha_0=(-1.1*pi/180), surface=1.09,
+    a_0=6.03, Cd0=0.1,rigging=10*pi/180, ts=ts, b=2.36, line_n=40, line_d=0.29,
+    R=1.2)
+mpayload = Payload(M=3.0,payload_cd=0.02)
 
 #start dynamics and attitude tracking
 parafoil_dynamics = Dynamics(dt=ts, mass=(parafoil.m+mpayload.M))
@@ -47,7 +48,7 @@ Desired_heading.update_history(0)
 TE_deflection = Variable(var_name="TE Deflection", limit=math.pi / 2 )
 Control_Input = Variable(var_name="Control_Input", limit=0.5)
 
-print(parafoil._Calc_Alpha_Trim(0.02, 7*pi/180))
+#print(parafoil._Calc_Alpha_Trim(0.02, 7*pi/180))
 
 current_alt = 0
 
@@ -107,7 +108,7 @@ while start or pos_z.history[-1] > 0:
         parafoil.bank = 0
         TE_deflection.update_history(0)'''
 
-    if sqrt(parafoil_dynamics.acc.dot(parafoil_dynamics.acc)) < .5 and calc_dubin:
+    if sqrt(parafoil_dynamics.acc.dot(parafoil_dynamics.acc)) < 1 and calc_dubin:
         #calculate maximum bank angle during turn
         TE_temp = pi/2
         sigma_maxx = np.arctan2(sqrt(parafoil_dynamics.vel_mag * parafoil_dynamics.vel_mag * 0.71 * TE_temp), sqrt(9.81 * parafoil.b))
@@ -117,7 +118,7 @@ while start or pos_z.history[-1] > 0:
 
         #calculate trajectory
         minimum_conditions = _All_Dubin_Paths(pos_init=np.array([parafoil_dynamics.pos[0],parafoil_dynamics.pos[1],parafoil_attitude.psi]), 
-        pos_final=np.array([200,200,-pi/2]), 
+        pos_final=np.array([10,30,0]), 
         altitude=parafoil_dynamics.pos[2],sigma_max=sigma_maxx,
         v_g=parafoil_dynamics.vel_mag,
         gamma_g_traj=parafoil_dynamics.gamma)
@@ -152,7 +153,7 @@ while start or pos_z.history[-1] > 0:
     vel_y_noise.update_history(parafoil_dynamics.vel_noise[1])
     vel_z_noise.update_history(parafoil_dynamics.vel_noise[2])
 
-    print(parafoil.Cl/parafoil.Cd)
+    #print(parafoil.Cl/parafoil.Cd)
     #update counter
     ts+= 0.01
     start=False
@@ -160,14 +161,22 @@ while start or pos_z.history[-1] > 0:
 pos_x.plot(pos_y.history, None, "x", pos_y.var_name, True)
 error_time.plot(None, None, "x", None, False)
 
-pos_x_noise.plot(None, None, "x", None, False)
+pos_x.plot(None, None, "x", None, False)
+pos_y.plot(None, None, "x", None, False)
+pos_z.plot(None, None, "x", None, False)
+vel_x.plot(None, None, "x", None, False)
+vel_y.plot(None, None, "x", None, False)
+vel_z.plot(None, None, "x", None, False)
+
+
+'''pos_x_noise.plot(None, None, "x", None, False)
 pos_y_noise.plot(None, None, "x", None, False)
 pos_z_noise.plot(None, None, "x", None, False)
 vel_x_noise.plot(None, None, "x", None, False)
 vel_y_noise.plot(None, None, "x", None, False)
-vel_z_noise.plot(None, None, "x", None, False)
+vel_z_noise.plot(None, None, "x", None, False)'''
 
-fig = plt.figure()
+#fig = plt.figure()
 #ax = fig.add_subplot(111, projection='3d')
 #ax.scatter3D(pos_x.history, pos_y.history, pos_z.history, c=pos_z.history, cmap='Greens');
 #ax.scatter3D(minimum_conditions.pos_x, minimum_conditions.pos_y, minimum_conditions.alt, c=minimum_conditions.alt, cmap='Greens');
