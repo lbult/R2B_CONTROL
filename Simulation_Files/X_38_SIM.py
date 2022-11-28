@@ -168,26 +168,32 @@ vel_y_noise.plot(None, None, "x", None, False)
 vel_z_noise.plot(None, None, "x", None, False)
 
 fig = plt.figure()
-#ax = fig.add_subplot(111, projection='3d')
-#ax.scatter3D(pos_x.history, pos_y.history, pos_z.history, c=pos_z.history, cmap='Greens');
+ax = fig.add_subplot(111, projection='3d')
+ax.scatter3D(pos_x.history, pos_y.history, pos_z.history, c=pos_z.history, color='blue');
 #ax.scatter3D(minimum_conditions.pos_x, minimum_conditions.pos_y, minimum_conditions.alt, c=minimum_conditions.alt, cmap='Greens');
 #plt.savefig("First")
-'''
-plt.plot(minimum_conditions.pos_x, minimum_conditions.pos_y)
-Control_Input.plot(None, None, "x", None, False)
-Plots for control:
-f, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
-ax1.plot(pos_x.history, pos_y.history)
-ax1.plot(minimum_conditions.pos_x, minimum_conditions.pos_y)
-ax2.plot(error_time.history)
 plt.show()
 
-plt.plot(pos_x.history, pos_z.history)
-plt.plot(minimum_conditions.pos_x, minimum_conditions.alt)
+plt.plot(minimum_conditions.pos_x, minimum_conditions.pos_y)
+Control_Input.plot(None, None, "x", None, False)
+#Plots for control:
+
+plt.plot(pos_x.history, pos_y.history, label="Actual trajectory")
+plt.plot(minimum_conditions.pos_x, minimum_conditions.pos_y, label="Desired trajectory")
+plt.xlabel("Position x [m]")
+plt.ylabel("Position y [m]")
+plt.legend()
+plt.show()
+
+plt.plot(pos_x.history, pos_z.history, label="Actual trajectory")
+plt.plot(minimum_conditions.pos_x, minimum_conditions.alt, label="Desired trajectory")
+plt.xlabel("Position x [m]")
+plt.ylabel("Position z [m]")
+plt.legend()
 plt.show()
 
 plt.plot(minimum_conditions.heading)
-plt.plot(Psi.history)'''
+#plt.plot(psi.history)
 
 plt.show()
     

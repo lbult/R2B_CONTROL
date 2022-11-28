@@ -96,13 +96,14 @@ class ParafoilProperties():
         def dfdx(x):
             return Cm_1 + 2*Cm_2*x - 2.1298+22.7498*2*x-3*649.379*x**2+4*4915*x**3-5*10814.1*x**4
         
+        # Newton's method to find the stable angle of attack
         iteration = 0
         x_tilde = x_0
         while iteration < 100:
             x_tilde = x_tilde - g(x_tilde)/dgdx(x_tilde)
             iteration += 1
-            
-
+        
+        # uncomment to plot the results
         x = np.linspace(-pi/38, pi/18, 1000)
         y = np.zeros(1000)
         counter = 0
@@ -111,6 +112,8 @@ class ParafoilProperties():
             counter+=1
 
         plt.plot(x,y)
+        plt.xlabel("Angle of attack [rad]")
+        plt.ylabel("Moment Coefficient [-]")
         plt.show()
         return x_tilde
 
