@@ -23,7 +23,7 @@ The simulation is run in "Simulation.py" (or "X_38_SIM.py"), and return a number
 
 ## Case study: X38 parafoil
 
-<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/X-38_Landing_%28cropped%29.jpg/1280px-X-38_Landing_%28cropped%29.jpg" width="800">
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/X-38_Landing_%28cropped%29.jpg/1280px-X-38_Landing_%28cropped%29.jpg" width="600">
 
 The simulation was run using an estimated set of X38 parafoil parameters to verify the correct functioning of the program. The estimated set of parameters was found by  test flight data (C. Cerimele et al. “Flight Performance, Aerodynamics, and
 Simulation Development for the X-38 Parafoil Test Program"). The simulation results were as follows (actual vs sim): equilibrium vertical velocity: 5.73 m/s vs 6.3 m/s; equilibrium horizontal velocity 17.37 m/s vs 17.8 m/s; angle of attack: 6° vs 6.39°; L/D: 3.0 vs 2.74. With this important set of flight characteristics lying within a range of 10% of the actual value, enough confidence was established to continue using the simulation for control and trajectory studies.
