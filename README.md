@@ -19,8 +19,7 @@ This simulation was developed for the Return-to-base (R2B) project (within DARE,
 
 The simulation is run in "Simulation.py" (or "X_38_SIM.py"), and return a number of plots. Especially interesting are the plots demonstrating the capability of the system to follow an optimal Dubin path.
 
-<img src="./Images/XY_desired.png" width="500">
-<img src="./Images/XZ_desired.png" width="500">
+<img src="./Images/XY_desired.png" width="500"> <img src="./Images/XZ_desired.png" width="500">
 
 ## Case study: X38 parafoil
 
