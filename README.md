@@ -7,7 +7,7 @@ This simulation was developed for the Return-to-base (R2B) project (within DARE,
 
 "Parafoil_Dynamics.py" contains the  The methods described in “Basic Analysis of Ram-Air Parachute” by Steven Lingard were used to get from an initial set of parameters to parafoil flight characteristcis (e.g. lift and drag). These methods were extended using the aerodynamics theory in "Fundamentals of aerodynamics" by John Anderson. A method was developed to obtain the equilibrium angle of attack from the moment coefficent vs angle of attack curve (see the figure below) of a certain parafoil cross-section. A simple numerical integration method was used to propagate the state of the parafoil-payload system in an inertial reference frame using a Cartesian coordinate system. 
 
-<img src="./Images/Cm_alpha.png" width="100">
+<img src="./Images/Cm_alpha.png" width="500">
 
 "Controller.py" features an implementation of the PID control algorithm proposed by B. Rademacher in “In-flight trajectory planning and guidance for autonomous parafoils". This controller uses both the position error and parafoil heading to create a desired asymmetric trailing edge deflection. An example of this control signal over time can be seen in the figure below. Note that actuator dynamics result in an actuator response that is "slower" than the desired signal.
 
